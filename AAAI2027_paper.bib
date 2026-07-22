@@ -1,0 +1,392 @@
+% ============================================================
+%  Bibliography for:
+%  "Weakly-Supervised 3D Anomaly Segmentation via
+%   Soft Mask-Coupled Diffusion Inpainting"
+%  AAAI 2027 Anonymous Submission
+% ============================================================
+
+% ── Foundational diffusion ───────────────────────────────────
+
+@inproceedings{ho2020ddpm,
+  author    = {Ho, Jonathan and Jain, Ajay and Abbeel, Pieter},
+  title     = {Denoising Diffusion Probabilistic Models},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {33},
+  pages     = {6840--6851},
+  year      = {2020},
+  publisher = {Curran Associates},
+}
+
+@inproceedings{song2021ddim,
+  author    = {Song, Jiaming and Meng, Chenlin and Ermon, Stefano},
+  title     = {Denoising Diffusion Implicit Models},
+  booktitle = {Proceedings of the International Conference on
+               Learning Representations},
+  year      = {2021},
+}
+
+@inproceedings{dhariwal2021beats,
+  author    = {Dhariwal, Prafulla and Nichol, Alexander},
+  title     = {Diffusion Models Beat {GAN}s on Image Synthesis},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {34},
+  pages     = {8780--8794},
+  year      = {2021},
+  publisher = {Curran Associates},
+}
+
+@inproceedings{repaint2022,
+  author    = {Lugmayr, Andreas and Danelljan, Martin and
+               Romero, Andres and Yu, Fisher and Timofte, Radu
+               and Van Gool, Luc},
+  title     = {{RePaint}: Inpainting Using Denoising Diffusion
+               Probabilistic Models},
+  booktitle = {Proceedings of the {IEEE/CVF} Conference on
+               Computer Vision and Pattern Recognition},
+  pages     = {11461--11471},
+  year      = {2022},
+}
+
+@misc{song2021score,
+  author        = {Song, Yang and Sohl-Dickstein, Jascha and
+                   Kingma, Diederik P. and Kumar, Abhishek and
+                   Ermon, Stefano and Poole, Ben},
+  title         = {Score-Based Generative Modeling through
+                   Stochastic Differential Equations},
+  eprint        = {2011.13456},
+  archivePrefix = {arXiv},
+  year          = {2021},
+}
+
+% ── Anomaly detection with diffusion ─────────────────────────
+
+@inproceedings{anoddpm2022,
+  author    = {Wyatt, Julian and Leach, Adam and
+               Schmon, Sebastian M. and Willcocks, Chris G.},
+  title     = {{AnoDDPM}: Anomaly Detection With Denoising
+               Diffusion Probabilistic Models Using Simplex Noise},
+  booktitle = {Proceedings of the {IEEE/CVF} Conference on
+               Computer Vision and Pattern Recognition Workshops},
+  pages     = {649--655},
+  year      = {2022},
+}
+
+@inproceedings{fontanella2023,
+  author    = {Fontanella, Alessandro and Mair, Grant and
+               Wardlaw, Joanna and Trucco, Emanuele and
+               Storkey, Amos},
+  title     = {Diffusion Models for Counterfactual Generation and
+               Anomaly Detection in Brain Images},
+  booktitle = {Proceedings of the {IEEE} Transactions on Medical
+               Imaging},
+  year      = {2024},
+  note      = {arXiv:2308.02062},
+}
+
+@misc{latent_ad2023,
+  author        = {Graham, Mark S. and Pinaya, Walter H. L. and
+                   Wright, Paul and Tudosiu, Petru-Daniel and
+                   Mah, Yee H. and Teo, James T. and
+                   Jager, Hans Rolf and Werring, David and
+                   Rees, Gavin and Nachev, Parashkev and
+                   Ourselin, Sebastien and Cardoso, M. Jorge},
+  title         = {Unsupervised 3D Out-of-Distribution Detection
+                   With Latent Diffusion Models},
+  eprint        = {2307.03777},
+  archivePrefix = {arXiv},
+  year          = {2023},
+}
+
+@misc{synomaly2024,
+  author        = {Anand, Hritik and Tao, Alan},
+  title         = {Synomaly Noise and Multi-Stage Diffusion:
+                   A Novel Approach for Unsupervised Anomaly
+                   Detection in Ultrasound Imaging},
+  eprint        = {2411.04004},
+  archivePrefix = {arXiv},
+  year          = {2024},
+}
+
+@inproceedings{itermask2024,
+  author    = {Liang, Ziyun and Guo, Xiaoqing and
+               Noble, J. Alison and Kamnitsas, Konstantinos},
+  title     = {{IterMask2}: Iterative Unsupervised Anomaly
+               Segmentation via Spatial and Frequency Masking
+               for Brain Lesions in {MRI}},
+  booktitle = {Proceedings of the 27th International Conference
+               on Medical Image Computing and Computer-Assisted
+               Intervention},
+  publisher = {Springer},
+  year      = {2024},
+}
+
+@inproceedings{fdp2026,
+  author    = {Anonymous},
+  title     = {{FDP}: A Frequency-Decomposition Preprocessing
+               Pipeline for Unsupervised Anomaly Detection in
+               Brain {MRI}},
+  booktitle = {Proceedings of the {AAAI} Conference on
+               Artificial Intelligence},
+  year      = {2026},
+  note      = {To appear},
+}
+
+% ── Adaptive mask inpainting ─────────────────────────────────
+
+@misc{aminet2024,
+  author        = {Luo, Wei and others},
+  title         = {{AMI-Net}: Adaptive Mask Inpainting Network
+                   for Industrial Anomaly Detection and
+                   Localization},
+  eprint        = {2412.11802},
+  archivePrefix = {arXiv},
+  year          = {2024},
+}
+
+@inproceedings{madpaint2025,
+  author    = {Liu, Haipeng and Wang, Yang and Qian, Biao and
+               Wang, Meng and Rui, Yong},
+  title     = {{MAD-paint}: Mask-Aware Diffusion Sampling for
+               Image Inpainting},
+  booktitle = {Proceedings of the International Conference on
+               Multimedia Retrieval},
+  publisher = {{ACM}},
+  year      = {2025},
+}
+
+% ── Foundation models for medical segmentation ───────────────
+
+@article{medsam2024,
+  author  = {Ma, Jun and He, Yuting and Li, Feifei and
+             Han, Lin and You, Chenyu and Wang, Bo},
+  title   = {Segment Anything in Medical Images},
+  journal = {Nature Communications},
+  volume  = {15},
+  number  = {1},
+  pages   = {654},
+  year    = {2024},
+  doi     = {10.1038/s41467-024-44824-z},
+}
+
+@misc{sam_med3d2023,
+  author        = {Wang, Hao and Guo, Sizheng and Ye, Jin and
+                   Deng, Zhongying and Cheng, Jianpin and
+                   Li, Tianbin and Chen, Jing and Su, Yiqing and
+                   Huang, Ziyan and Shen, Yanzhou and
+                   Fu, Hua and Zhang, Shaoting and He, Junjun},
+  title         = {{SAM-Med3D}: Towards General-Purpose
+                   Segmentation Models for Volumetric Medical
+                   Images},
+  eprint        = {2310.15161},
+  archivePrefix = {arXiv},
+  year          = {2023},
+}
+
+@inproceedings{segvol2024,
+  author    = {Du, Yuxin and Bai, Fan and Huang, Tiejun and
+               Zhao, Bo},
+  title     = {{SegVol}: Universal and Interactive Volumetric
+               Medical Image Segmentation},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {37},
+  year      = {2024},
+}
+
+@misc{vista3d2024,
+  author        = {He, Yufan and Guo, Pengfei and Tang, Yucheng
+                   and Myronenko, Andriy and Nath, Vishwesh and
+                   Xu, Ziyue and Yang, Dong and Zhao, Can and
+                   Simon, Benjamin and Belue, Mason and
+                   others},
+  title         = {{VISTA3D}: A Unified Segmentation Foundation
+                   Model for {3D} Medical Imaging},
+  eprint        = {2406.05285},
+  archivePrefix = {arXiv},
+  year          = {2024},
+}
+
+@misc{medsam2_2025,
+  author        = {Ma, Jun and Yang, Zitian and Kim, Sumin and
+                   Chen, Bihui and Baharoon, Mohammed and
+                   Fallahpour, Adibvafa and Asakereh, Reza and
+                   Lyu, Hongwei and Wang, Bo},
+  title         = {{MedSAM2}: Segment Anything in 3D Medical
+                   Images and Videos},
+  eprint        = {2504.03600},
+  archivePrefix = {arXiv},
+  year          = {2025},
+}
+
+@misc{nninteractive2025,
+  author        = {Isensee, Fabian and Rokuss, Maximilian and
+                   Kr{\"a}mer, Lars and Dinkelacker, Stefan and
+                   Ravindran, Ashis and Stritzke, Florian and
+                   Hamm, Benjamin and Wald, Tassilo and
+                   Langenberg, Moritz and Ulrich, Constantin and
+                   Deissler, Jonas and Floca, Ralf and
+                   Maier-Hein, Klaus},
+  title         = {{nnInteractive}: Redefining 3D Promptable
+                   Segmentation},
+  eprint        = {2503.08373},
+  archivePrefix = {arXiv},
+  year          = {2025},
+}
+
+% ── Supervised segmentation ──────────────────────────────────
+
+@article{nnunet2021,
+  author  = {Isensee, Fabian and Jaeger, Paul F. and
+             Kohl, Simon A. A. and Petersen, Jens and
+             Maier-Hein, Klaus H.},
+  title   = {{nnU-Net}: A Self-Configuring Method for Deep
+             Learning-Based Biomedical Image Segmentation},
+  journal = {Nature Methods},
+  volume  = {18},
+  number  = {2},
+  pages   = {203--211},
+  year    = {2021},
+  doi     = {10.1038/s41592-020-01008-z},
+}
+
+@inproceedings{medsegdiff2024,
+  author    = {Wu, Junde and Ji, Wei and Fu, Huazhu and
+               Xu, Min and Jin, Yueming and Xu, Yanwu},
+  title     = {{MedSegDiff-V2}: Diffusion-Based Medical Image
+               Segmentation with Transformer},
+  booktitle = {Proceedings of the {AAAI} Conference on
+               Artificial Intelligence},
+  volume    = {38},
+  pages     = {6030--6038},
+  year      = {2024},
+}
+
+% ── Weakly supervised segmentation ──────────────────────────
+
+@misc{rectflow2026,
+  author        = {Anonymous},
+  title         = {Weakly-Supervised Lung Nodule Segmentation
+                   via Training-Free Guidance of {3D} Rectified
+                   Flow},
+  eprint        = {2604.08313},
+  archivePrefix = {arXiv},
+  year          = {2026},
+}
+
+@inproceedings{deepem2018,
+  author    = {Zhu, Wentao and Liu, Chaochun and Fan, Wei and
+               Xie, Xiaohui},
+  title     = {{DeepEM}: Deep {3D} {ConvNets} With {EM} for
+               Weakly Supervised Pulmonary Nodule Detection},
+  booktitle = {Proceedings of the 21st International Conference
+               on Medical Image Computing and Computer-Assisted
+               Intervention},
+  pages     = {812--820},
+  publisher = {Springer},
+  year      = {2018},
+}
+
+@article{zhou2023recist,
+  author  = {Zhou, Lianyu and Wang, Han and Shen, Yiqing and
+             Chen, Qizheng and Shi, Feng and Shen, Dinggang},
+  title   = {{RECIST}-Induced Reliable Learning: Geometry-Driven
+             Label Propagation for Universal Lesion Segmentation},
+  journal = {{IEEE} Transactions on Medical Imaging},
+  volume  = {42},
+  number  = {7},
+  pages   = {1920--1930},
+  year    = {2023},
+  doi     = {10.1109/TMI.2023.3244165},
+}
+
+% ── Datasets ─────────────────────────────────────────────────
+
+@article{lidc2011,
+  author  = {Armato, Samuel G. and McLennan, Geoffrey and
+             Bidaut, Luc and McNitt-Gray, Michael F. and
+             Meyer, Charles R. and Reeves, Anthony P. and
+             Zhao, Binsheng and Aberle, Denise R. and
+             Henschke, Claudia I. and Hoffman, Eric A. and
+             others},
+  title   = {The Lung Image Database Consortium ({LIDC}) and
+             Image Database Resource Initiative ({IDRI}):
+             A Completed Reference Database of Lung Nodules on
+             {CT} Scans},
+  journal = {Medical Physics},
+  volume  = {38},
+  number  = {2},
+  pages   = {915--931},
+  year    = {2011},
+  doi     = {10.1118/1.3528204},
+}
+
+@article{luna2017,
+  author  = {Setio, Arnaud Arindra Adiyoso and Traverso,
+             Alberto and de Bel, Thomas and Berens, Moira S. N.
+             and van den Bogaard, Cas and Cerello, Piergiorgio
+             and Chen, Hao and Dou, Qi and Fantacci, Maria Evelina
+             and Geurts, Bram and others},
+  title   = {Validation, Comparison, and Combination of
+             Algorithms for Automatic Detection of Pulmonary
+             Nodules in Computed Tomography Images: The {LUNA16}
+             Challenge},
+  journal = {Medical Image Analysis},
+  volume  = {42},
+  pages   = {1--13},
+  year    = {2017},
+  doi     = {10.1016/j.media.2017.06.015},
+}
+
+@article{nlst2011,
+  author  = {{The National Lung Screening Trial Research Team}},
+  title   = {Reduced Lung-Cancer Mortality with Low-Dose Computed
+             Tomographic Screening},
+  journal = {New England Journal of Medicine},
+  volume  = {365},
+  number  = {5},
+  pages   = {395--409},
+  year    = {2011},
+  doi     = {10.1056/NEJMoa1102873},
+}
+
+@article{msd2019,
+  author  = {Simpson, Amber L. and Antonelli, Michela and
+             Bakas, Spyridon and Bilello, Michel and
+             Farahani, Keyvan and van Ginneken, Bram and
+             Kopp-Schneider, Annette and Landman, Bennett A. and
+             Litjens, Geert and Menze, Bjoern and others},
+  title   = {A Large Annotated Medical Image Dataset for the
+             Development and Evaluation of Segmentation Algorithms},
+  journal = {Nature Communications},
+  volume  = {10},
+  number  = {1},
+  pages   = {4842},
+  year    = {2019},
+  doi     = {10.1038/s41467-019-13220-9},
+}
+
+@inproceedings{kits2023,
+  author    = {Heller, Nicholas and McSweeney, Sean and
+               Peterson, Melissa T. and others},
+  title     = {The {KiTS23} Challenge: Kidney and Kidney Tumor
+               Segmentation in {CT}},
+  booktitle = {Proceedings of the 26th International Conference
+               on Medical Image Computing and Computer-Assisted
+               Intervention},
+  publisher = {Springer},
+  year      = {2023},
+}
+
+@article{brats2015,
+  author  = {Menze, Bjoern H. and Jakab, Andras and
+             Bauer, Stefan and Kalpathy-Cramer, Jayashree and
+             Farahani, Keyvan and Kirby, Justin and
+             Burren, Yann and others},
+  title   = {The Multimodal Brain Tumor Image Segmentation
+             Benchmark ({BraTS})},
+  journal = {{IEEE} Transactions on Medical Imaging},
+  volume  = {34},
+  number  = {10},
+  pages   = {1993--2024},
+  year    = {2015},
+  doi     = {10.1109/TMI.2014.2377694},
+}
