@@ -77,65 +77,68 @@ Weakly supervised anomaly segmentation in volumetric medical imaging remains cha
 \section{Introduction}
 \label{sec:intro}
 
-Volumetric anomaly segmentation in 3D medical imaging is a
-prerequisite for radiomics analysis, malignancy stratification,
-and longitudinal monitoring. Fully supervised 3D segmentation
-models achieve strong performance on LIDC-IDRI, the only large-
-scale lung CT dataset with voxel-level mask annotations
-(${\approx}1{,}000$ cases). The vast majority of clinical 3D
-imaging datasets---including the National Lung Screening Trial
-(NLST, 26,254 subjects) and analogous repositories across liver,
-kidney, and brain---carry only cheap \emph{weak labels}: bounding
-boxes, centroids, or RECIST diameters. This annotation bottleneck
-is universal across organ types and imaging modalities.
+In lung CT, many practical CAD pipelines do not search the entire
+volume blindly: a candidate region is first proposed---by a
+detector, a radiologist, or a coarse clinical cue such as a
+slice-wise bounding box---and a second stage must decide
+\emph{whether} that region contains abnormal tissue and, if so,
+\emph{where}. Dense voxel masks remain expensive to annotate at
+scale, so this second stage is increasingly driven by
+\emph{interactive} foundation models that accept the same cheap
+box or point prompts
+\citep{nninteractive2025,segvol2024,sam_med3d2023,medsam2_2025,vista3d2024}.
 
-State-of-the-art interactive foundation models
-\citep{nninteractive2025,segvol2024,sam_med3d2023,medsam2_2025}
-accept box/point prompts but segment ``the thing in the box'' by
-boundary contrast: they have no mechanism to distinguish
-pathological from normal tissue. This fails critically for
-sub-6\,mm nodules and ground-glass opacities (GGOs), where
-intensity boundaries are absent or ambiguous across all
-modalities.
+These models are trained as general segmenters: given a prompt,
+they extract ``the object in the box'' by boundary contrast. They
+have no explicit notion of healthy lung parenchyma. As a result,
+they can produce confident masks even when the prompted region is
+entirely normal---a failure mode that is especially damaging for
+screening and triage, where false positives drive unnecessary
+follow-up. The issue is acute for small or low-contrast findings
+(e.g., sub-6\,mm nodules and ground-glass opacities), where
+intensity boundaries are weak or absent, but it also appears on
+\emph{healthy} tissue whenever a box is placed without a true
+lesion.
 
-We reframe weakly supervised anomaly segmentation as
-\emph{healthy-tissue counterfactual generation} via 3D diffusion
-inpainting. Our model is trained only on healthy patches; at
-inference, given a weak label it inpaints the indicated region as
-plausible healthy tissue, and the residual localizes the anomaly.
-A novel \emph{soft mask-coupled reverse process} refines this
-residual into a tight 3D pseudo-segmentation mask entirely inside
-the generative sampling dynamics. Because the model learns only
-``normal,'' it is anomaly-agnostic and transfers across organs and
-modalities without retraining on lesion data.
+We therefore reframe the task as
+\emph{region-prompted anomaly verification} rather than generic
+interactive segmentation. We learn a generative prior of
+\emph{healthy} lung CT from nodule-free patches only, then---at
+inference---treat the prompted region as a hole to be inpainted
+with plausible normal tissue via 3D diffusion / rectified-flow
+sampling (RePaint-style). The residual between the observation and
+this healthy counterfactual localizes the anomaly; an iterative
+refinement loop updates the inpainting region where large errors
+persist, sharpening the mask without ever using lesion masks at
+training time. Because the model asks ``can this region be
+explained as healthy?'' rather than ``what object is inside the
+box?'', it is naturally conservative on normal parenchyma.
 
 \paragraph{Contributions.}
-Our contributions span three groups:
-
 \begin{itemize}
-\item \textbf{Diffusion \& Sampling (C1--C4).}
-    Soft Gaussian mask initialization from weak labels~(C1) and a
-    soft mask-coupled reverse diffusion kernel~(C2), in which the
-    anomaly mask $m_t$ evolves as a latent variable inside the
-    reverse process---the first such formulation in
-    reconstruction-based anomaly detection.
-    A multi-timestep discrepancy score~(C3) exploiting the
-    lesion-size-dependent information content of the per-step
-    residual $r_t$, and mask-scoped classifier guidance~(C4) that
-    actively suppresses pathological reconstructions within the
-    evolving mask.
+\item \textbf{Problem framing.}
+    We cast weakly supervised lung anomaly segmentation as
+    \emph{region-conditioned healthy counterfactual generation}:
+    the same box prompts used by interactive segmenters become
+    inpainting holes, and anomalies are read out as residual
+    evidence against a healthy prior.
 
-\item \textbf{Training (C5--C6).}
-    A four-component synthetic anomaly augmentation suite~(C5)
-    and an anomaly-aware hinge regularizer~(C6) that sharpen the
-    healthy-tissue prior and improve robustness to domain shift,
-    theoretically coupled to C2 and C4 through the soft mask.
+\item \textbf{Method.}
+    A 3D rectified-flow / diffusion model trained exclusively on
+    healthy lung patches; mask-guided inpainting from weak
+    per-slice boxes; and iterative residual-based mask refinement
+    that yields voxel-level pseudo-segmentations without lesion
+    masks during training.
 
-\item \textbf{Generalisation (C7--C9).}
-    Cross-dataset generalisation on LIDC-IDRI, NLST, LUNA16~(C7);
-    cross-organ transfer from lung to liver/kidney CT~(C8); and
-    cross-modality transfer from CT to brain MRI~(C9)---
-    demonstrating the framework is not lung- or CT-specific.
+\item \textbf{Evaluation against interactive segmenters.}
+    Under matched box prompts on LIDC-IDRI, we compare against
+    contemporary interactive foundation models (e.g., SAM-Med2D/3D,
+    SegVol, VISTA3D, nnInteractive). Beyond standard overlap
+    metrics, we emphasize a \emph{healthy false-positive} probe:
+    random boxes inside nodule-free lung, where promptable
+    segmenters often still fire while our healthy-prior model
+    remains largely silent---highlighting a safety-critical
+    advantage of anomaly verification over object segmentation.
 \end{itemize}
 
 % =============================================================
