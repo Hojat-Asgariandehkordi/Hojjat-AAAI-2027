@@ -145,55 +145,72 @@ box?'', it is naturally conservative on normal parenchyma.
 \section{Related Work}
 \label{sec:related}
 
-\paragraph{Supervised 3D Lesion Segmentation.}
-nnU-Net \citep{nnunet2021} is the de facto upper bound for
-supervised CT segmentation, auto-configuring a 3D U-Net to any
-dataset. Transformer-based architectures (SwinUNETR, nnFormer)
-improve on LIDC-IDRI but require full mask supervision and degrade
-sharply outside their training distribution, especially on
-sub-6\,mm nodules due to extreme class imbalance.
+\paragraph{Interactive Foundation Models for Medical Segmentation.}
+Promptable segmentation, popularized by SAM~\citep{kirillov2023sam},
+has rapidly become the default interface for cheap clinical cues
+(boxes, points). MedSAM~\citep{medsam2024} adapts SAM to 2D medical
+images; SAM-Med2D~\citep{sam_med2d2023} further scales adapter-based
+fine-tuning on millions of masks. Volumetric successors include
+SAM-Med3D~\citep{sam_med3d2023}, SegVol~\citep{segvol2024},
+VISTA3D~\citep{vista3d2024} (automatic + interactive CT foundation
+model), MedSAM2~\citep{medsam2_2025}, and
+nnInteractive~\citep{nninteractive2025}. These systems excel when an
+object is present and well contrasted against the background.
+However, they implement \emph{object} segmentation: the prompt
+selects ``what to cut out,'' not ``whether anything abnormal is
+there.'' They therefore lack an explicit healthy-tissue prior and
+can emit confident masks on entirely normal parenchyma---precisely
+the false-positive failure mode our healthy-FP probe targets.
+Our setting reuses the same weak box prompts, but reads the answer
+as residual evidence against a generative model of healthy lung.
 
-\paragraph{Weakly Supervised Lesion Segmentation.}
-DeepEM \citep{deepem2018} trains 3D CNNs from location labels via
-EM over latent boxes. RECIST-based supervision
-\citep{zhou2023recist} converts 2D diameters into 3D pseudo-
-labels. Most relevantly, \citet{rectflow2026} use a 3D latent
-diffusion model's generative guidance to suppress nodule signal in
-reconstruction on LUNA16---the closest existing work. Key
-differences: their model is not trained on healthy-only data;
-their mask is not evolved inside the reverse process; they provide
-no classifier guidance, regularizer, or cross-organ/modality
-evaluation.
+\paragraph{Supervised and Weakly Supervised Lesion Segmentation.}
+Fully supervised 3D segmenters such as nnU-Net~\citep{nnunet2021}
+and transformer hybrids (e.g., Swin~UNETR~\citep{swinunetr2022},
+nnFormer~\citep{nnformer2021}) remain strong when dense masks are
+available, but voxel annotation does not scale to screening CAD.
+Weak supervision from locations or RECIST diameters
+\citep{deepem2018,zhou2023recist} reduces labeling cost yet still
+trains a discriminative segmenter. Closest to our generative
+view, \citet{rectflow2026} guide a 3D latent generative model to
+suppress nodule signal under weak cues on LUNA16. We differ in
+training an unconditional healthy-only prior, treating the prompt as
+an inpainting hole with RePaint-style~\citep{lugmayr2022repaint}
+known-region injection, and iteratively refining the hole from the
+residual---without lesion masks at training time.
 
-\paragraph{Reconstruction-Based Anomaly Detection.}
-AnoDDPM \citep{anoddpm2022} introduced partial diffusion with
-simplex noise for brain MRI, training on healthy data and
-computing reconstruction error as the anomaly score
-($+25.5\%$ Dice over f-AnoGAN). Extensions include latent-space
-partial diffusion \citep{latent_ad2023}, Synomaly noise for
-ultrasound \citep{synomaly2024}, counterfactual generation for
-brain tumours \citep{fontanella2023}, IterMask2
-\citep{itermask2024}, and FDP \citep{fdp2026} for brain MRI.
-All are 2D or 2D-stacked, use a fixed corruption region, and do
-\emph{not} evolve the mask inside the reverse process.
+\paragraph{Generative Medical Anomaly Detection.}
+Classical unsupervised AD learns a model of normality and scores
+deviations, from GAN-based approaches such as
+f-AnoGAN~\citep{fanogan2019} to diffusion-based reconstruction.
+AnoDDPM~\citep{anoddpm2022} introduced partial diffusion with
+simplex noise for brain MRI; AutoDDPM~\citep{autoddpm2023}
+automates masking, stitching, and re-sampling for more robust
+pseudo-healthy synthesis. Related lines include latent-space
+partial diffusion~\citep{latent_ad2023}, counterfactual brain-tumor
+generation~\citep{fontanella2023}, IterMask2~\citep{itermask2024},
+Synomaly noise for ultrasound~\citep{synomaly2024}, and frequency
+decomposition pipelines~\citep{fdp2026}. These methods typically
+operate in 2D (or 2D-stacked) MRI/US, corrupt or mask regions
+automatically, and do not consume the \emph{same interactive box
+prompts} used by foundation segmenters. We bring the healthy-prior
+idea into 3D lung CT CAD, where the candidate region is already
+given and false positives on normal boxes are clinically costly.
 
-\paragraph{Adaptive Mask Inpainting.}
-AMI-Net \citep{aminet2024} proposes an adaptive mask generator for
-industrial anomaly detection (MVTec AD, BTAD). MAD-paint
-\citep{madpaint2025} introduces mask-uncertainty metrics for
-diffusion inpainting. Neither is 3D, medical, nor couples the mask
-inside the reverse diffusion kernel.
-
-\paragraph{Foundation Models for Medical Segmentation.}
-MedSAM \citep{medsam2024} fine-tunes SAM on medical data but
-remains 2D. SAM-Med3D \citep{sam_med3d2023} retrains SAM natively
-in 3D. SegVol \citep{segvol2024} is a universal interactive CT
-segmenter. MedSAM2 \citep{medsam2_2025} applies SAM2's video
-memory to 3D volumes. nnInteractive \citep{nninteractive2025} won
-the CVPR 2025 Foundation Models for Interactive 3D Biomedical
-Image Segmentation Challenge. All are boundary-detection paradigms that lack an explicit
-anomaly-versus-normal generative prior; they also tend to degrade
-on small or low-contrast lesions.
+\paragraph{Diffusion / Flow Inpainting and Adaptive Masks.}
+RePaint~\citep{lugmayr2022repaint} established mask-guided
+resampling for diffusion inpainting; industrial adaptive-mask
+methods (AMI-Net~\citep{aminet2024}, MAD-paint~\citep{madpaint2025})
+evolve corruption regions for anomaly localization outside medicine.
+On the generative modeling side, denoising
+diffusion~\citep{ho2020ddpm} and simulation-free flow
+matching~/~rectified flow~\citep{lipman2023flowmatching,liu2023flow}
+provide high-fidelity priors with straighter sampling paths.
+We combine these ingredients for \emph{region-prompted anomaly
+verification}: a 3D rectified-flow / diffusion prior of healthy
+lung, box-defined holes, residual readout, and iterative
+refinement---positioned as a complementary alternative to
+interactive object segmenters when low false-positive rate matters.
 
 % =============================================================
 \section{Methodology}
@@ -244,7 +261,7 @@ is taken as the prediction,
 \label{sec:method:data}
 %------------------------------------------------------------------------------
 
-We use LIDC-IDRI chest CT volumes~\cite{armato2011lidc}.
+We use LIDC-IDRI chest CT volumes~\cite{lidc2011}.
 Patches of size \(64^{3}\) are extracted at resampling to spacing
 \((0.7,0.7,1.5)\,\mathrm{mm}\) and retained only when the lung mask occupies at
 least \(25\%\) of the patch.
@@ -549,7 +566,7 @@ is empty, lower predicted volume indicates fewer false positives.
 \subsection{Baselines}
 We compare against interactive / promptable foundation models that
 accept the same box interface:
-SAM-Med2D \citep{medsam2024},
+SAM-Med2D \citep{sam_med2d2023},
 SAM-Med3D \citep{sam_med3d2023},
 SegVol \citep{segvol2024},
 VISTA3D \citep{vista3d2024}, and
@@ -672,58 +689,64 @@ segmentation when false positives matter.
 \label{sec:conclusion}
 
 \subsection{Scope}
-Within lung CT, the framework is anomaly-agnostic: solid nodules,
-part-solid nodules, GGOs, and any localized deviation from healthy
-parenchyma are detected via the same residual mechanism. Cross-
-organ and cross-modality scope is empirically demonstrated (C8,
-C9). Extension to ultrasound and PET requires domain-specific
-healthy-prior training and is reserved for future work. The
-framework is applicable to any clinical dataset with bounding box
-or centroid annotations and a healthy-tissue corpus for training.
+We study \emph{region-prompted} lung CT: a candidate box is already
+available, and the system must verify whether that region contains
+abnormal tissue and localize it. Within this setting the method is
+pathology-agnostic among localized lung anomalies---solid nodules,
+part-solid nodules, and GGOs are handled by the same healthy-prior
+residual---because no lesion masks are used at training time.
+The framework applies wherever (i)~weak box or slice-wise prompts
+exist and (ii)~a corpus of nodule-free lung patches can be curated
+to learn the healthy prior. Broader organs and modalities are a
+natural extension but require re-training the healthy generative
+model on the corresponding normal tissue; they are left to future
+work.
 
 \subsection{Limitations}
 \begin{itemize}
-    \item \textbf{Inference speed.} Iterative reverse diffusion
-    with per-step mask updates and classifier guidance is slower
-    than a single network forward pass. DDIM acceleration is
-    applied but per-nodule latency exceeds nnU-Net/nnInteractive.
-    Consistency-model distillation is planned future work.
+    \item \textbf{Inference cost.} RePaint-style sampling with
+    iterative residual refinement is slower than a single forward
+    pass of an interactive foundation model. Rectified-flow
+    sampling and fewer refine rounds mitigate latency, but
+    distillation or consistency models remain attractive for
+    clinical throughput.
 
-    \item \textbf{Classifier dependency.} C4's classifier is
-    trained on LIDC-IDRI, introducing a semi-supervised element;
-    it must be retrained per new organ/modality for C8/C9.
+    \item \textbf{Candidate dependence.} We assume a region prompt
+    (detector, radiologist, or coarse clinical box). The method is
+    not a free-search detector; empty or poorly placed boxes can
+    still induce residuals from normal anatomical variability.
 
-    \item \textbf{Patch size.} The $64^3$ patch-level framework
-    may fragment very large or diffuse lesions at boundaries;
-    multi-scale hierarchical inference is future work.
+    \item \textbf{Patch geometry.} The $64^3$ operating resolution
+    may clip very large or diffuse findings at patch boundaries;
+    whole-volume tiling helps, but multi-scale hierarchical
+    inference is future work.
 
-    \item \textbf{Modality scope.} Cross-modality validation
-    covers brain MRI only; ultrasound and PET are not evaluated
-    in this paper.
+    \item \textbf{Domain of the prior.} The generative model is
+    trained on healthy lung CT. Transfer to other organs or
+    modalities needs a matching healthy corpus and is not claimed
+    by our current LIDC experiments.
 \end{itemize}
 
 \subsection{Conclusion}
-We presented a unified framework for weakly supervised 3D anomaly
-segmentation requiring no voxel-level annotations at any stage.
-Our soft mask-coupled reverse diffusion (C1, C2), multi-timestep
-discrepancy score and classifier guidance (C3, C4), synthetic
-augmentation and hinge regularizer (C5, C6), and cross-dataset/-
-organ/-modality generalisation (C7--C9) constitute a coherent
-system coupled through the evolving soft mask $m_t$. Because the
-model is trained only on healthy tissue and never on any specific
-pathology, it is anomaly-agnostic by construction: the same
-pipeline detects solid nodules, GGOs, liver lesions, and brain
-tumours using only weak labels---without retraining on lesion
-data. The framework outperforms interactive foundation models
-specifically in the sub-6\,mm, low-contrast regime where
-boundary-detection paradigms fail, and generalises across organs
-and modalities by design.
+We reframed weakly supervised lung anomaly segmentation as
+\emph{region-prompted anomaly verification}: learn a 3D
+rectified-flow~/~diffusion prior of healthy parenchyma, treat the
+same weak boxes used by interactive segmenters as inpainting holes,
+and localize anomalies as residuals against the healthy
+counterfactual, sharpened by iterative residual refinement---without
+lesion masks at training time. Under matched prompts on LIDC-IDRI,
+the approach is competitive with contemporary interactive foundation
+models on true nodules while remaining markedly more conservative on
+healthy random boxes, where object-centric segmenters often still
+fire. These results support generative healthy inpainting as a
+principled alternative to interactive object segmentation when low
+false-positive rate is critical in lung CT CAD.
 
 % =============================================================
 \section*{Acknowledgments}
 [Omitted for anonymous review.]
 
 % =============================================================
-\bibliography{paper}
+\bibliography{AAAI2027_paper}
 
 \end{document}
