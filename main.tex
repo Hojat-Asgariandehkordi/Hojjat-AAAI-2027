@@ -518,159 +518,154 @@ Morphology & off \\
 \section{Experiments}
 \label{sec:experiments}
 
-\subsection{Datasets}
-\textbf{Lung CT.}
-LIDC-IDRI \citep{lidc2011} (1,018 scans, four-radiologist
-consensus voxel masks; \emph{oracle evaluation}).
-NLST \citep{nlst2011} (26,254 subjects, box/centroid weak labels;
-\emph{scale test}).
-LUNA16 \citep{luna2017} (\emph{FROC benchmark}).
+We evaluate region-prompted anomaly verification against
+interactive foundation segmenters under \emph{matched box
+prompts}. The primary questions are: (i)~when a true nodule is
+present, how well do we recover it? and (ii)~when the prompted
+region is healthy, how often do models still produce a spurious
+mask?
 
-\noindent\textbf{Cross-organ CT (C8).}
-MSD Task~03 liver tumours \citep{msd2019} or KiTS kidney tumours
-\citep{kits2023} (full mask GT; box-only weak labels at
-inference).
+\subsection{Datasets and Protocol}
+\paragraph{Positive LIDC hold-out.}
+We use a patient-disjoint test cache of \(N{=}1658\) nodule-centered
+\(64^3\) patches from LIDC-IDRI \citep{lidc2011}, resampled to
+\(0.7{\times}0.7{\times}1.5\,\mathrm{mm}\) and windowed to
+\([-1000,400]\)~HU. Dense radiologist consensus masks are used
+\emph{only for evaluation}.
 
-\noindent\textbf{Cross-modality MRI (C9).}
-BraTS \citep{brats2015} brain tumours (full mask GT; box-only weak
-labels at inference).
+\paragraph{Prompting.}
+All methods receive the same Strategy-4 prompts: per-slice 2D
+bounding boxes around the nodule mask with \(1\)-voxel padding
+(the interactive-segmentation analogue of a weak clinical cue).
+Ours converts these boxes into an inpainting hole; foundation
+models consume them as box interactions.
+
+\paragraph{Healthy false-positive probe.}
+To stress-test over-segmentation, we place random boxes inside
+\emph{nodule-free} lung patches (\(N{=}3840\) prompts) and measure
+how much mask each model still predicts. Because the ground truth
+is empty, lower predicted volume indicates fewer false positives.
 
 \subsection{Baselines}
-We compare against:
-(i)~nnU-Net 3D \citep{nnunet2021} (supervised upper bound);
-(ii)~MedSegDiff-V2 \citep{medsegdiff2024} (supervised diffusion
-segmentation, AAAI~2024);
-(iii)~AnoDDPM reimplemented natively in 3D \citep{anoddpm2022}
-(unsupervised reconstruction, no weak labels);
-(iv)~VAE-based 3D anomaly detection (non-diffusion reconstruction
-baseline);
-(v)~AMI-Net adapted to 3D CT \citep{aminet2024};
-(vi)~MedSAM \citep{medsam2024} (2D, box-prompted, slice-by-slice);
-(vii)~SAM-Med3D \citep{sam_med3d2023};
-(viii)~SegVol \citep{segvol2024};
-(ix)~MedSAM2 \citep{medsam2_2025};
-(x)~nnInteractive \citep{nninteractive2025} (all 3D, box-prompted;
-nnInteractive is the CVPR~2025 challenge winner).
+We compare against interactive / promptable foundation models that
+accept the same box interface:
+SAM-Med2D \citep{medsam2024},
+SAM-Med3D \citep{sam_med3d2023},
+SegVol \citep{segvol2024},
+VISTA3D \citep{vista3d2024}, and
+nnInteractive \citep{nninteractive2025} (CVPR~2025 challenge
+winner).
+For Ours we report a rectified-flow checkpoint with iterative
+residual refinement; unless noted, the default configuration is
+\(40\) inference steps and \(R{=}2\) refine rounds.
 
-\subsection{Main Results}
-
-\todo{Table~\ref{tab:main}: Dice/IoU on LIDC-IDRI and FROC on
-LUNA16 across all baselines. Fill after experiments complete.}
+\subsection{Main Results on LIDC}
+Table~\ref{tab:main} reports mean Dice / IoU under matched prompts.
+Ours is competitive with the strongest interactive baseline
+(SAM-Med2D) and exceeds nnInteractive, SegVol, VISTA3D, and
+SAM-Med3D, despite never training on lesion masks.
 
 \begin{table}[t]
 \centering
-\caption{Main segmentation results on LIDC-IDRI (Dice/IoU, full
-mask GT) and LUNA16 (FROC). Best weakly supervised result in
-\textbf{bold}; best overall \underline{underlined}.}
+\caption{LIDC-IDRI positive test patches (\(N{=}1658\)), matched
+Strategy-4 box prompts. Best interactive / weakly supervised Dice
+in \textbf{bold}.}
 \label{tab:main}
 \begin{tabular}{lccc}
 \toprule
-Method & Supervision & LIDC Dice & LUNA FROC \\
+Method & Prompt & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 \midrule
-nnU-Net 3D          & Full mask     & \todo{} & \todo{} \\
-MedSegDiff-V2       & Full mask     & \todo{} & \todo{} \\
-\midrule
-AnoDDPM-3D          & Unsupervised  & \todo{} & \todo{} \\
-VAE-3D AD           & Unsupervised  & \todo{} & \todo{} \\
-\midrule
-MedSAM (2D)         & Box prompt    & \todo{} & \todo{} \\
-SAM-Med3D           & Box prompt    & \todo{} & \todo{} \\
-SegVol              & Box prompt    & \todo{} & \todo{} \\
-MedSAM2             & Box prompt    & \todo{} & \todo{} \\
-nnInteractive       & Box prompt    & \todo{} & \todo{} \\
-\midrule
-\textbf{Ours (Full)}& Box/centroid  & \todo{} & \todo{} \\
+SAM-Med2D       & Box & \textbf{0.737} & \textbf{0.605} \\
+\textbf{Ours (40-step, \(R{=}2\))}
+                & Box & 0.734 & 0.600 \\
+Ours (40-step)  & Box & 0.726 & 0.593 \\
+nnInteractive   & Box & 0.717 & 0.582 \\
+SegVol          & Box & 0.370 & 0.252 \\
+VISTA3D         & Box & 0.190 & 0.119 \\
+SAM-Med3D       & Box & 0.015 & 0.008 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Stratified Analysis.}
-Table~\ref{tab:strat} reports Dice stratified by nodule diameter,
-demonstrating our advantage in the sub-6\,mm regime against all
-baselines including nnInteractive---the primary empirical claim of
-this paper.
+\paragraph{Takeaway.}
+On true nodules, healthy-counterfactual inpainting matches strong
+2D interactive segmentation and outperforms several native-3D
+promptable models. The next experiment asks whether that
+competitiveness comes at the cost of over-calling on normal lung.
+
+\subsection{Healthy False-Positive Probe}
+Table~\ref{tab:healthy_fp} reports mean predicted mask volume
+(mm\(^3\)) on random boxes in nodule-free lung. Among methods that
+remain competitive on LIDC (Table~\ref{tab:main}), Ours yields the
+\emph{smallest} spurious volume---substantially below SAM-Med2D,
+SegVol, and especially nnInteractive. VISTA3D is nearly silent on
+healthy tissue, but its LIDC Dice (\(0.19\)) shows that silence
+alone is not useful without sensitivity to real nodules.
 
 \begin{table}[t]
 \centering
-\caption{Dice stratified by nodule diameter on LIDC-IDRI.}
-\label{tab:strat}
-\begin{tabular}{lccc}
+\caption{Healthy false-positive probe: random boxes in nodule-free
+lung (\(N{=}3840\)). Lower predicted volume is better. Dice against
+empty GT is omitted (near zero for any non-empty prediction).}
+\label{tab:healthy_fp}
+\begin{tabular}{lc}
 \toprule
-Method & $<6$\,mm & $6$--$10$\,mm & $>10$\,mm \\
+Method & Pred.\ volume (mm\(^3\)) \(\downarrow\) \\
 \midrule
-nnU-Net 3D    & \todo{} & \todo{} & \todo{} \\
-nnInteractive & \todo{} & \todo{} & \todo{} \\
-SegVol        & \todo{} & \todo{} & \todo{} \\
-\textbf{Ours} & \todo{} & \todo{} & \todo{} \\
+VISTA3D$^\dagger$     & \(0\) \\
+\textbf{Ours (60-step, \(R{=}3\))} & \textbf{1006} \\
+Ours (40-step, \(R{=}2\)) & 1076 \\
+SegVol                & 1395 \\
+SAM-Med2D             & 1980 \\
+SAM-Med3D             & 2872 \\
+nnInteractive         & 4015 \\
 \bottomrule
-\end{tabular}
+\end{tabular}\\[0.25em]
+{\footnotesize $^\dagger$Near-silent on healthy prompts, but poor on
+true nodules (Table~\ref{tab:main}).}
 \end{table}
 
-\subsection{Simulated Weak-Label Experiment}
-To directly validate our method in the annotation regime it
-targets, we strip LIDC-IDRI masks to bounding boxes/centroids and
-run the full pipeline using \emph{only} these degraded labels,
-then evaluate against the real withheld masks. This addresses the
-primary reviewer concern: ``does the method work when you actually
-only have weak labels?''
+\paragraph{Takeaway.}
+Interactive segmenters optimize ``objectness in the box'' and
+therefore over-segment healthy parenchyma. A healthy generative
+prior is naturally more conservative: competitive Dice when an
+anomaly is present, and markedly less spurious mass when it is
+not---the central empirical claim of this paper.
 
-\subsection{Ablation Study}
-
-Table~\ref{tab:ablation} ablates each contribution in sequence,
-isolating the effect of each component.
+\subsection{Ablation: Steps and Refine Rounds}
+Table~\ref{tab:ablation} varies inference steps and refine rounds
+\(R\) on the LIDC positive set (same checkpoint). Moderate compute
+(\(40\) steps, \(R{=}2\)) is sufficient for near-peak Dice;
+additional steps yield diminishing returns.
 
 \begin{table}[t]
 \centering
-\caption{Ablation on LIDC-IDRI Dice (LIDC) and sub-6\,mm Dice
-(Small).}
+\caption{Ablation of inference steps and refine rounds on LIDC
+positive test (\(N{=}1658\)).}
 \label{tab:ablation}
 \begin{tabular}{lcc}
 \toprule
-Configuration                              & LIDC Dice & Small \\
+Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 \midrule
-(0) Hard-box inpainting (baseline)         & \todo{} & \todo{} \\
-(1) + Soft Gaussian init (C1)              & \todo{} & \todo{} \\
-(2) + Mask-coupled reverse (C2)            & \todo{} & \todo{} \\
-(3) + Multi-timestep score (C3)            & \todo{} & \todo{} \\
-(4) + Classifier guidance (C4)             & \todo{} & \todo{} \\
-(5) + Synthetic augmentation (C5)          & \todo{} & \todo{} \\
-(6) + Hinge regularizer (C6) = Full model  & \todo{} & \todo{} \\
+30-step (refine on) & 0.721 & 0.587 \\
+40-step (refine on) & 0.726 & 0.593 \\
+\textbf{40-step, \(R{=}2\)} & \textbf{0.734} & \textbf{0.600} \\
+60-step (refine on) & 0.722 & 0.588 \\
+80-step, \(R{=}2\) & 0.725 & 0.590 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Additional ablations cover: initial $\sigma$ sensitivity;
-$\lambda$/$\tau_t$ annealing schedule; guidance scale $s$; DDIM
-step count; and each augmentation component independently.
-
-\subsection{Cross-Organ and Cross-Modality Generalisation}
-
-Table~\ref{tab:generalization} reports MSD liver Dice (C8) and
-BraTS Dice (C9) compared against AnoDDPM-3D, IterMask2, and
-FDP-AAAI2026 in the box-prompted weak-label regime. We also
-report downstream malignancy classification AUC from radiomic
-features extracted from NLST pseudo-masks, compared against
-features from LIDC-IDRI expert masks, directly validating the
-``weakly supervised segmentation for downstream radiomics''
-framing.
-
-\begin{table}[t]
-\centering
-\caption{Generalisation across organs (liver CT) and modalities
-(brain MRI), box-prompted weak-label setting.}
-\label{tab:generalization}
-\begin{tabular}{lccc}
-\toprule
-Method & Liver Dice (C8) & BraTS Dice (C9) & NLST AUC \\
-\midrule
-AnoDDPM-3D    & \todo{} & \todo{} & --- \\
-IterMask2     & ---     & \todo{} & --- \\
-FDP           & ---     & \todo{} & --- \\
-nnInteractive & \todo{} & \todo{} & --- \\
-\textbf{Ours} & \todo{} & \todo{} & \todo{} \\
-\bottomrule
-\end{tabular}
-\end{table}
+\subsection{Discussion}
+Across Tables~\ref{tab:main}--\ref{tab:healthy_fp}, the operating
+point we recommend (\(40\)-step, \(R{=}2\)) is nearly tied with
+SAM-Med2D on positive Dice while producing roughly half the
+spurious predicted volume of SAM-Med2D---and about one quarter
+that of nnInteractive---on healthy random boxes. This supports
+the problem reframing in Section~\ref{sec:intro}: for
+region-prompted lung CAD, anomaly verification against a healthy
+prior is a better inductive bias than interactive object
+segmentation when false positives matter.
 
 % =============================================================
 \section{Scope, Limitations, and Conclusion}
