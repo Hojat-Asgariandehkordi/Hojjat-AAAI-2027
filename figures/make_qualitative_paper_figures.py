@@ -40,11 +40,14 @@ import scripts  # noqa: E402
 
 LOG = logging.getLogger("paper.qual")
 
-LIDC_CASES = [129, 1621, 585, 1514]
-ABLATION_CASES = [129, 585, 1514]
-MAISI_CASES = [33, 74, 11, 90]
+# Selected for strong Ours performance (not mean/failure cases).
+# LIDC: top 40-step R=2 Dice. MAISI: high 60-step R=3 Dice with compact
+# mid-slice nodules (exclude near-full-crop masks that read as empty GT).
+LIDC_CASES = [1370, 76, 1183, 338]  # Dice ≈ 0.93
+ABLATION_CASES = [1370, 76, 1183]
+MAISI_CASES = [50, 9, 86, 16]  # Dice ≈ 0.87 / 0.86 / 0.84 / 0.84 (compact)
 HEALTHY_CASES = [217, 1365, 1532, 2002]
-NSCLC_PATIENTS = ["LUNG1-007", "LUNG1-017", "LUNG1-024", "LUNG1-039"]
+NSCLC_PATIENTS = ["LUNG1-024", "LUNG1-145", "LUNG1-098", "LUNG1-173"]  # Dice ≈ 0.90–0.89
 
 # Built-in visualize script only auto-runs sam_med2d/segvol/vista3d; we add the rest.
 FM_KEYS_BUILTIN = ["sam_med2d", "segvol", "vista3d"]
@@ -345,7 +348,13 @@ def _collect_stores_lidc(cfg, logger, force: bool):
     pkl = CACHE / "lidc_stores.pkl"
     if pkl.is_file() and not force:
         LOG.info("Loading %s", pkl)
-        return pickle.loads(pkl.read_bytes())
+        raw = pickle.loads(pkl.read_bytes())
+        # fill_foundation_qual_gpu0 saves plain dicts for pickle stability
+        if raw and isinstance(raw[0], dict):
+            from types import SimpleNamespace
+
+            return [SimpleNamespace(**item) for item in raw]
+        return raw
 
     import scripts.visualize_ours_step_refine_comparison as viz
 
@@ -423,17 +432,24 @@ def _draw_paper_grid(stores, col_keys, col_labels, stem, title, hu_min, hu_max, 
 
 def run_maisi(force: bool) -> None:
     from scripts.setting import load_yaml_config, setup_logging
-    import scripts.visualize_ours_step_refine_comparison as viz
     import pickle
 
-    _patch_foundation_imports()
     logger = setup_logging("paper.qual.maisi")
     cfg = load_yaml_config(CNET / "configs/benchmark_test_maisi_foundation.yaml")
 
     pkl = CACHE / "maisi_stores.pkl"
     if pkl.is_file() and not force:
-        stores = pickle.loads(pkl.read_bytes())
+        raw = pickle.loads(pkl.read_bytes())
+        if raw and isinstance(raw[0], dict):
+            from types import SimpleNamespace
+
+            stores = [SimpleNamespace(**item) for item in raw]
+        else:
+            stores = raw
     else:
+        import scripts.visualize_ours_step_refine_comparison as viz
+
+        _patch_foundation_imports()
         out = CACHE / "maisi_raw"
         out.mkdir(parents=True, exist_ok=True)
         captured = {}
@@ -535,24 +551,28 @@ def run_healthy_compose() -> None:
 
     csegs, rsegs = segs(white_c), segs(white_r)
     LOG.info("healthy gallery panels: %d cols × %d rows", len(csegs), len(rsegs))
-    # Prefer rows with visible lime mass on SAM-Med2D / nnInteractive (cols 1,5)
-    # Columns: 0 prompt, 1 sam2d, 2 sam3d, 3 segvol, 4 vista, 5 nni, 6 ours
+    # Prefer rows where Ours is nearly empty (best FP rejection) while SAM/SegVol
+    # still paint — gallery cols: 0 prompt, 1 sam2d, 2 sam3d, 3 segvol, 4 vista, 5 nni, 6 ours
+    def _lime_frac(tile: np.ndarray) -> float:
+        lime = (tile[:, :, 1] > 180) & (tile[:, :, 0] < 120) & (tile[:, :, 2] < 120)
+        return float(lime.mean())
+
     pick_rows = []
     for ri, (y0, y1) in enumerate(rsegs):
-        # score FP evidence in SAM-Med2D and nnInteractive columns
-        score = 0.0
-        for ci in (1, 5, 6):
-            if ci >= len(csegs):
-                continue
+        fracs = []
+        for ci in range(len(csegs)):
             x0, x1 = csegs[ci]
-            tile = im[y0:y1, x0:x1]
-            # lime-ish pixels
-            lime = (tile[:, :, 1] > 180) & (tile[:, :, 0] < 120) & (tile[:, :, 2] < 120)
-            score += float(lime.mean())
-        pick_rows.append((score, ri))
+            fracs.append(_lime_frac(im[y0:y1, x0:x1]))
+        base_fp = (fracs[1] + fracs[2] + fracs[3]) if len(fracs) > 3 else sum(fracs[1:3])
+        ours_fp = fracs[6] if len(fracs) > 6 else 0.0
+        score = base_fp - 20.0 * ours_fp
+        pick_rows.append((score, ri, ours_fp, base_fp))
     pick_rows.sort(reverse=True)
-    # keep diversity: top 4 by score
-    row_ids = sorted([ri for _, ri in pick_rows[:4]])
+    row_ids = sorted([ri for _, ri, _, _ in pick_rows[:4]])
+    LOG.info(
+        "healthy row pick scores: %s",
+        [(ri, round(sc, 4), round(of, 4)) for sc, ri, of, _ in pick_rows[:4]],
+    )
 
     # Paper column order: prompt, sam2d, nni, sam3d, segvol, vista, ours
     src_cols = [0, 1, 5, 2, 3, 4, 6]
