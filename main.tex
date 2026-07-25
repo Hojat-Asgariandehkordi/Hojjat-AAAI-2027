@@ -620,9 +620,22 @@ VISTA3D         & Box & 0.19 & 0.11 \\
 \paragraph{Takeaway.}
 On true nodules, healthy-counterfactual inpainting matches strong
 2D interactive segmentation and outperforms native-3D promptable
-models that are weak under the same boxes. The next experiment asks
-whether that competitiveness comes at the cost of over-calling on
-normal lung.
+models that are weak under the same boxes.
+Figure~\ref{fig:qual-lidc} visualizes matched box-prompt predictions
+on representative LIDC cases: Ours tracks the GT contour closely,
+while nnInteractive and SAM-Med3D often inflate the prompt box,
+and SegVol / VISTA3D are noisy or incomplete under the same boxes.
+The next experiment asks whether that competitiveness comes at the
+cost of over-calling on normal lung.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_lidc.pdf}
+  \caption{Qualitative LIDC overlays under matched box prompts
+  (red~=~GT, lime~=~prediction). Columns: GT, SAM-Med2D, nnInteractive,
+  SAM-Med3D, SegVol, VISTA3D, and Ours (\(40\)-step, \(R{=}2\)).}
+  \label{fig:qual-lidc}
+\end{figure*}
 
 \subsection{Healthy False-Positive Probe}
 Table~\ref{tab:healthy_fp} reports mean predicted mask volume
@@ -683,6 +696,19 @@ therefore over-segment healthy parenchyma. A healthy generative
 prior is naturally more conservative: competitive Dice when an
 anomaly is present, and markedly less spurious mass when it is
 not---the central empirical claim of this paper.
+Figure~\ref{fig:qual-fp} makes this concrete: under empty-GT random
+boxes, interactive baselines often paint large lime masks inside the
+prompt, whereas Ours remains sparse.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp.pdf}
+  \caption{Healthy false-positive probe: random boxes in nodule-free
+  lung (yellow~=~prompt, lime~=~prediction; GT empty). Interactive
+  baselines often fill the box; Ours is more conservative
+  (Table~\ref{tab:healthy_fp}).}
+  \label{fig:qual-fp}
+\end{figure*}
 
 \subsection{Generalization: MAISI and NSCLC}
 Table~\ref{tab:cross} and Figures~\ref{fig:bench}--\ref{fig:bench-per}
@@ -690,7 +716,10 @@ report mean Dice under the same matched-box protocol on MAISI and
 NSCLC-Radiomics, with LIDC repeated for reference. Ours remains in the top tier on
 all three sets (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step,
 \(R{=}1\)), tracking nnInteractive / SAM-Med2D while continuing to
-beat SegVol and VISTA3D by a wide margin. This suggests the
+beat SegVol and VISTA3D by a wide margin. Figure~\ref{fig:qual-cross}
+shows the corresponding overlays: on MAISI, the same foundation-model
+columns as Figure~\ref{fig:qual-lidc} plus Ours; on NSCLC, volume-level
+comparisons for the transferred checkpoint. This suggests the
 healthy-prior residual is not an LIDC-only artifact.
 
 \begin{table}[t]
@@ -730,12 +759,25 @@ VISTA3D       & 0.19 & 0.45 & 0.12 \\
   \label{fig:bench-per}
 \end{figure}
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig_qual_maisi.pdf}\\[0.4em]
+  \includegraphics[width=0.95\textwidth]{figures/fig_qual_nsclc.pdf}
+  \caption{Cross-dataset qualitative overlays (red~=~GT, lime~=~prediction).
+  Top: MAISI (GT, SAM-Med2D, nnInteractive, SAM-Med3D, SegVol, VISTA3D,
+  Ours \(60\)-step/\(R{=}3\)).
+  Bottom: NSCLC-Radiomics with Ours (\(60\)-step, \(R{=}1\)).}
+  \label{fig:qual-cross}
+\end{figure*}
+
 \subsection{Ablation: Steps and Refine Rounds}
 Table~\ref{tab:ablation} and Figure~\ref{fig:ablation} vary
 inference steps and refine rounds \(R\) on the LIDC positive set
 (same checkpoint). Moderate compute (\(40\) steps, \(R{=}2\)) is
 sufficient for near-peak Dice; additional steps yield diminishing
-returns.
+returns. Figure~\ref{fig:qual-ablation} shows the corresponding
+overlays: residual quality is visually stable across the reported
+configs, consistent with the flat Dice curve.
 
 \begin{table}[t]
 \centering
@@ -764,6 +806,15 @@ Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
   \label{fig:ablation}
 \end{figure}
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_ablation.pdf}
+  \caption{Ablation qualitative overlays on LIDC (red~=~GT,
+  lime~=~prediction) for the step/\(R\) settings in
+  Table~\ref{tab:ablation}.}
+  \label{fig:qual-ablation}
+\end{figure*}
+
 \subsection{Discussion}
 Across Tables~\ref{tab:main}--\ref{tab:healthy_fp} and
 Figures~\ref{fig:results}--\ref{fig:fp-tradeoff}, the operating
@@ -773,8 +824,14 @@ spurious predicted volume of SAM-Med2D---and about one quarter that
 of nnInteractive---on healthy random boxes. Cross-dataset Dice
 (Table~\ref{tab:cross}, Figures~\ref{fig:bench}--\ref{fig:bench-per})
 shows the same competitive tier on MAISI and NSCLC. The ablation
-(Table~\ref{tab:ablation}, Figure~\ref{fig:ablation}) confirms that
-extra sampling steps beyond this point do not help. Together these
+(Table~\ref{tab:ablation}, Figures~\ref{fig:ablation} and
+\ref{fig:qual-ablation}) confirms that extra sampling steps beyond
+this point do not help. Qualitative model-output overlays
+(Figures~\ref{fig:qual-lidc},~\ref{fig:qual-fp}, and~\ref{fig:qual-cross})
+make the quantitative story visible: Ours localizes nodules under the
+same Strategy-4 boxes as the interactive baselines, while producing
+less box-filling on healthy prompts and transferring to MAISI/NSCLC
+without lesion-mask supervision. Together these
 results support the problem reframing in Section~\ref{sec:intro}:
 for region-prompted lung CAD, anomaly verification against a healthy
 prior is a better inductive bias than interactive object

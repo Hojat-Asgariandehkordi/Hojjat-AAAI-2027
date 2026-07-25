@@ -1,47 +1,23 @@
-% Camera-ready figure includes (priority order). Numbers are cut to 2 decimals in tables.
-
 % P0 — Combined LIDC Dice + healthy FP
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{figures/fig_results_bars.pdf}
-  \caption{Matched box prompts: (a) LIDC Dice on true nodules;
-  (b) predicted volume on healthy random boxes.}
+  \caption{Matched box prompts: (a) LIDC Dice on true nodules; (b) predicted volume on healthy random boxes.}
   \label{fig:results}
 \end{figure}
 
-% P0/P1 — FP trade-off
+% P1 — FP trade-off
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{figures/fig_healthy_fp_tradeoff.pdf}
-  \caption{Healthy false-positive probe: (a) mean predicted volume;
-  (b) trade-off against LIDC true-nodule Dice.}
+  \caption{Healthy false-positive probe: (a) mean predicted volume; (b) trade-off against LIDC true-nodule Dice.}
   \label{fig:fp-tradeoff}
 \end{figure}
 
-% P1 — Multi-dataset grouped
+% P1 — Multi-dataset Dice
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{figures/fig_benchmark_dice_3datasets.pdf}
-  \caption{Mean Dice under matched box prompts on LIDC, MAISI, and
-  NSCLC (grouped by method). Hatched bars highlight Ours.}
+  \caption{Mean Dice under matched box prompts on LIDC, MAISI, and NSCLC. Ours uses dataset-specific RF configs.}
   \label{fig:bench}
 \end{figure*}
-
-% P1 — Multi-dataset per panel
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig_benchmark_dice_per_dataset.pdf}
-  \caption{Per-dataset Dice under the same matched box prompts
-  (LIDC, MAISI, NSCLC). Ours uses dataset-specific RF configs.}
-  \label{fig:bench-per}
-\end{figure}
-
-% P1 — Ablation
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig_ablation_steps.pdf}
-  \caption{Ablation of RF inference steps and refine rounds on LIDC
-  positives. The hatched bar is the main reported config
-  (\(40\)-step, \(R{=}2\)).}
-  \label{fig:ablation}
-\end{figure}
