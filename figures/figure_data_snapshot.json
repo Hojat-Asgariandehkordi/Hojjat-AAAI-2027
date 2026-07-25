@@ -1,0 +1,411 @@
+{
+  "bench_pivot": {
+    "LIDC": {
+      "SAM-Med2D": 0.73,
+      "Ours": 0.73,
+      "nnInteractive": 0.71,
+      "SAM-Med3D": 0.54,
+      "SegVol": 0.37,
+      "VISTA3D": 0.19
+    },
+    "MAISI": {
+      "SAM-Med2D": 0.7,
+      "Ours": 0.71,
+      "nnInteractive": 0.71,
+      "SAM-Med3D": 0.56,
+      "SegVol": 0.28,
+      "VISTA3D": 0.45
+    },
+    "NSCLC": {
+      "SAM-Med2D": 0.76,
+      "Ours": 0.78,
+      "nnInteractive": 0.79,
+      "SAM-Med3D": 0.55,
+      "SegVol": 0.17,
+      "VISTA3D": 0.12
+    }
+  },
+  "bench": [
+    {
+      "dataset": "LIDC",
+      "method": "SAM-Med2D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 1658,
+      "n_note": "N=1658 patches",
+      "dice": 0.7372,
+      "iou": 0.6046,
+      "precision": 0.7489,
+      "recall": 0.7605
+    },
+    {
+      "dataset": "LIDC",
+      "method": "Ours",
+      "ours_tag": "s40_r2",
+      "ours_config": "s=40, R=2",
+      "n_cases": 1658,
+      "n_note": "N=1658 patches",
+      "dice": 0.7338,
+      "iou": 0.5998,
+      "precision": 0.7684,
+      "recall": 0.757
+    },
+    {
+      "dataset": "LIDC",
+      "method": "nnInteractive",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 1658,
+      "n_note": "N=1658 patches",
+      "dice": 0.7171,
+      "iou": 0.5823,
+      "precision": 0.6282,
+      "recall": 0.9097
+    },
+    {
+      "dataset": "LIDC",
+      "method": "SAM-Med3D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 1658,
+      "n_note": "N=1658 patches",
+      "dice": 0.5421,
+      "iou": 0.4099,
+      "precision": 0.4696,
+      "recall": 0.7831
+    },
+    {
+      "dataset": "LIDC",
+      "method": "SegVol",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 1658,
+      "n_note": "N=1658 patches",
+      "dice": 0.37,
+      "iou": 0.2516,
+      "precision": 0.3372,
+      "recall": 0.5433
+    },
+    {
+      "dataset": "LIDC",
+      "method": "VISTA3D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 1658,
+      "n_note": "N=1658 patches",
+      "dice": 0.1901,
+      "iou": 0.1186,
+      "precision": 0.1384,
+      "recall": 0.638
+    },
+    {
+      "dataset": "MAISI",
+      "method": "SAM-Med2D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 109,
+      "n_note": "N=109 patches",
+      "dice": 0.7019,
+      "iou": 0.5728,
+      "precision": 0.7275,
+      "recall": 0.7341
+    },
+    {
+      "dataset": "MAISI",
+      "method": "Ours",
+      "ours_tag": "s60_r3",
+      "ours_config": "s=60, R=3",
+      "n_cases": 109,
+      "n_note": "N=109 patches",
+      "dice": 0.7108,
+      "iou": 0.5779,
+      "precision": 0.6234,
+      "recall": 0.8834
+    },
+    {
+      "dataset": "MAISI",
+      "method": "nnInteractive",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 109,
+      "n_note": "N=109 patches",
+      "dice": 0.7131,
+      "iou": 0.5642,
+      "precision": 0.5848,
+      "recall": 0.9398
+    },
+    {
+      "dataset": "MAISI",
+      "method": "SAM-Med3D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 109,
+      "n_note": "N=109 patches",
+      "dice": 0.5654,
+      "iou": 0.4358,
+      "precision": 0.6204,
+      "recall": 0.6773
+    },
+    {
+      "dataset": "MAISI",
+      "method": "SegVol",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 109,
+      "n_note": "N=109 patches",
+      "dice": 0.2817,
+      "iou": 0.1757,
+      "precision": 0.3696,
+      "recall": 0.3881
+    },
+    {
+      "dataset": "MAISI",
+      "method": "VISTA3D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 109,
+      "n_note": "N=109 patches",
+      "dice": 0.4529,
+      "iou": 0.3288,
+      "precision": 0.4016,
+      "recall": 0.8115
+    },
+    {
+      "dataset": "NSCLC",
+      "method": "SAM-Med2D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 85,
+      "n_note": "N=85 volumes",
+      "dice": 0.7696,
+      "iou": 0.6314,
+      "precision": NaN,
+      "recall": NaN
+    },
+    {
+      "dataset": "NSCLC",
+      "method": "Ours",
+      "ours_tag": "s60_r1",
+      "ours_config": "s=60, R=1",
+      "n_cases": 85,
+      "n_note": "N=85 volumes",
+      "dice": 0.7878,
+      "iou": 0.6595,
+      "precision": 0.7595,
+      "recall": 0.8322
+    },
+    {
+      "dataset": "NSCLC",
+      "method": "nnInteractive",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 85,
+      "n_note": "N=85 volumes",
+      "dice": 0.7994,
+      "iou": 0.67,
+      "precision": 0.6895,
+      "recall": 0.9611
+    },
+    {
+      "dataset": "NSCLC",
+      "method": "SAM-Med3D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 85,
+      "n_note": "N=85 volumes",
+      "dice": 0.5542,
+      "iou": 0.3973,
+      "precision": NaN,
+      "recall": NaN
+    },
+    {
+      "dataset": "NSCLC",
+      "method": "SegVol",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 85,
+      "n_note": "N=85 volumes",
+      "dice": 0.1785,
+      "iou": 0.1035,
+      "precision": NaN,
+      "recall": NaN
+    },
+    {
+      "dataset": "NSCLC",
+      "method": "VISTA3D",
+      "ours_tag": "",
+      "ours_config": "",
+      "n_cases": 85,
+      "n_note": "N=85 volumes",
+      "dice": 0.1282,
+      "iou": 0.0702,
+      "precision": NaN,
+      "recall": NaN
+    }
+  ],
+  "lidc": [
+    {
+      "method": "SAM-Med2D",
+      "dice": 0.7372,
+      "iou": 0.6046
+    },
+    {
+      "method": "Ours (40-step, R=2)",
+      "dice": 0.7338,
+      "iou": 0.5998
+    },
+    {
+      "method": "nnInteractive",
+      "dice": 0.7171,
+      "iou": 0.5823
+    },
+    {
+      "method": "SAM-Med3D",
+      "dice": 0.5421,
+      "iou": 0.4099
+    },
+    {
+      "method": "SegVol",
+      "dice": 0.37,
+      "iou": 0.2516
+    },
+    {
+      "method": "VISTA3D",
+      "dice": 0.1901,
+      "iou": 0.1186
+    }
+  ],
+  "maisi": [
+    {
+      "method": "SAM-Med2D",
+      "dice": 0.7019,
+      "iou": 0.5728
+    },
+    {
+      "method": "Ours",
+      "dice": 0.7108,
+      "iou": 0.5779
+    },
+    {
+      "method": "nnInteractive",
+      "dice": 0.7131,
+      "iou": 0.5642
+    },
+    {
+      "method": "SAM-Med3D",
+      "dice": 0.5654,
+      "iou": 0.4358
+    },
+    {
+      "method": "SegVol",
+      "dice": 0.2817,
+      "iou": 0.1757
+    },
+    {
+      "method": "VISTA3D",
+      "dice": 0.4529,
+      "iou": 0.3288
+    }
+  ],
+  "nsclc": [
+    {
+      "method": "SAM-Med2D",
+      "dice": 0.7696,
+      "iou": 0.6314
+    },
+    {
+      "method": "Ours",
+      "dice": 0.7878,
+      "iou": 0.6595
+    },
+    {
+      "method": "nnInteractive",
+      "dice": 0.7994,
+      "iou": 0.67
+    },
+    {
+      "method": "SAM-Med3D",
+      "dice": 0.5542,
+      "iou": 0.3973
+    },
+    {
+      "method": "SegVol",
+      "dice": 0.1785,
+      "iou": 0.1035
+    },
+    {
+      "method": "VISTA3D",
+      "dice": 0.1282,
+      "iou": 0.0702
+    }
+  ],
+  "healthy_fp": [
+    {
+      "method": "VISTA3D",
+      "volume_mm3": 0.0,
+      "note": "near-silent but poor on true nodules"
+    },
+    {
+      "method": "Ours (60-step, R=3)",
+      "volume_mm3": 1005.74165234375,
+      "note": ""
+    },
+    {
+      "method": "Ours (40-step, R=2)",
+      "volume_mm3": 1075.666375,
+      "note": ""
+    },
+    {
+      "method": "SegVol",
+      "volume_mm3": 1395.4828671875,
+      "note": ""
+    },
+    {
+      "method": "SAM-Med2D",
+      "volume_mm3": 1980.4310859375,
+      "note": ""
+    },
+    {
+      "method": "SAM-Med3D",
+      "volume_mm3": 2872.272046875,
+      "note": ""
+    },
+    {
+      "method": "nnInteractive",
+      "volume_mm3": 4014.930609375,
+      "note": ""
+    }
+  ],
+  "ablation": [
+    {
+      "config": "30-step (refine on)",
+      "dice": 0.7207,
+      "iou": 0.587
+    },
+    {
+      "config": "40-step (refine on)",
+      "dice": 0.7264,
+      "iou": 0.5929
+    },
+    {
+      "config": "40-step, R=2",
+      "dice": 0.7338,
+      "iou": 0.5998
+    },
+    {
+      "config": "60-step (refine on)",
+      "dice": 0.7222,
+      "iou": 0.5882
+    },
+    {
+      "config": "80-step, R=2",
+      "dice": 0.7248,
+      "iou": 0.5901
+    }
+  ],
+  "ours_tags": {
+    "LIDC": "s40_r2",
+    "MAISI": "s60_r3",
+    "NSCLC": "s60_r1"
+  }
+}

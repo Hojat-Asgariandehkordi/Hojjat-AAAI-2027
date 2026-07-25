@@ -1,0 +1,19 @@
+dataset,method,ours_tag,ours_config,n_cases,n_note,dice,iou,precision,recall
+LIDC,SAM-Med2D,,,1658,N=1658 patches,0.7372,0.6046,0.7489,0.7605
+LIDC,Ours,s40_r2,"s=40, R=2",1658,N=1658 patches,0.7338,0.5998,0.7684,0.757
+LIDC,nnInteractive,,,1658,N=1658 patches,0.7171,0.5823,0.6282,0.9097
+LIDC,SAM-Med3D,,,1658,N=1658 patches,0.5421,0.4099,0.4696,0.7831
+LIDC,SegVol,,,1658,N=1658 patches,0.37,0.2516,0.3372,0.5433
+LIDC,VISTA3D,,,1658,N=1658 patches,0.1901,0.1186,0.1384,0.638
+MAISI,SAM-Med2D,,,109,N=109 patches,0.7019,0.5728,0.7275,0.7341
+MAISI,Ours,s60_r3,"s=60, R=3",109,N=109 patches,0.7108,0.5779,0.6234,0.8834
+MAISI,nnInteractive,,,109,N=109 patches,0.7131,0.5642,0.5848,0.9398
+MAISI,SAM-Med3D,,,109,N=109 patches,0.5654,0.4358,0.6204,0.6773
+MAISI,SegVol,,,109,N=109 patches,0.2817,0.1757,0.3696,0.3881
+MAISI,VISTA3D,,,109,N=109 patches,0.4529,0.3288,0.4016,0.8115
+NSCLC,SAM-Med2D,,,85,N=85 volumes,0.7696,0.6314,,
+NSCLC,Ours,s60_r1,"s=60, R=1",85,N=85 volumes,0.7878,0.6595,0.7595,0.8322
+NSCLC,nnInteractive,,,85,N=85 volumes,0.7994,0.67,0.6895,0.9611
+NSCLC,SAM-Med3D,,,85,N=85 volumes,0.5542,0.3973,,
+NSCLC,SegVol,,,85,N=85 volumes,0.1785,0.1035,,
+NSCLC,VISTA3D,,,85,N=85 volumes,0.1282,0.0702,,

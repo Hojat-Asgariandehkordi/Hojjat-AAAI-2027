@@ -1,0 +1,11 @@
+%% Mermaid — method overview (preview in Cursor Markdown)
+%% Paper: region-prompted anomaly verification via healthy RF inpainting
+flowchart LR
+  A[CT patch + box prompt] --> B[Mask hole from boxes]
+  B --> C[Healthy RF inpainting]
+  C --> D[Residual |x - x̂|]
+  D --> E[Threshold + refine R]
+  E --> F[Anomaly mask ŷ]
+
+  style C fill:#0B3D5C,color:#fff,stroke:#111
+  style F fill:#047857,color:#fff,stroke:#111

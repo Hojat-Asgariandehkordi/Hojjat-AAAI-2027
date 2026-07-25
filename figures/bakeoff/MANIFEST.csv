@@ -1,0 +1,16 @@
+stem,tool,files
+fig_ablation_steps,plotly,fig_ablation_steps.html
+fig_ablation_steps,seaborn_hbar,"fig_ablation_steps.pdf, fig_ablation_steps.png, fig_ablation_steps.svg"
+fig_ablation_steps,seaborn_vbar,"fig_ablation_steps.pdf, fig_ablation_steps.png, fig_ablation_steps.svg"
+fig_benchmark_dice_3datasets,plotly,fig_benchmark_dice_3datasets.html
+fig_benchmark_dice_3datasets,seaborn_facet,"fig_benchmark_dice_3datasets.pdf, fig_benchmark_dice_3datasets.png, fig_benchmark_dice_3datasets.svg"
+fig_benchmark_dice_3datasets,seaborn_grouped,"fig_benchmark_dice_3datasets.pdf, fig_benchmark_dice_3datasets.png, fig_benchmark_dice_3datasets.svg"
+fig_healthy_fp,plotly,fig_healthy_fp.html
+fig_healthy_fp,seaborn_hbar,"fig_healthy_fp.pdf, fig_healthy_fp.png, fig_healthy_fp.svg"
+fig_healthy_fp,seaborn_vbar,"fig_healthy_fp.pdf, fig_healthy_fp.png, fig_healthy_fp.svg"
+fig_healthy_fp_tradeoff,plotly,fig_healthy_fp_tradeoff.html
+fig_healthy_fp_tradeoff,seaborn_hbar,"fig_healthy_fp_tradeoff.pdf, fig_healthy_fp_tradeoff.png, fig_healthy_fp_tradeoff.svg"
+fig_healthy_fp_tradeoff,seaborn_scatter,"fig_healthy_fp_tradeoff.pdf, fig_healthy_fp_tradeoff.png, fig_healthy_fp_tradeoff.svg"
+fig_results_bars,plotly,fig_results_bars.html
+fig_results_bars,seaborn_hbar,"fig_results_bars.pdf, fig_results_bars.png, fig_results_bars.svg"
+fig_results_bars,seaborn_vbar,"fig_results_bars.pdf, fig_results_bars.png, fig_results_bars.svg"

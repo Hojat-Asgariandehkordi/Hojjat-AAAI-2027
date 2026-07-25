@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="484.92pt" height="131.758594pt" viewBox="0 0 484.92 131.758594" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-07-25T12:05:30.244601</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.7.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 131.758594 
+L 484.92 131.758594 
+L 484.92 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 15.777 92.926594 
+L 92.673 92.926594 
+Q 95.877 92.926594 95.877 89.870594 
+L 95.877 47.086594 
+Q 95.877 44.030594 92.673 44.030594 
+L 15.777 44.030594 
+Q 12.573 44.030594 12.573 47.086594 
+L 12.573 89.870594 
+Q 12.573 92.926594 15.777 92.926594 
+z
+" clip-path="url(#pc3d9d6bf07)" style="fill: #f3f4f6; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 123.912 92.926594 
+L 208.818 92.926594 
+Q 212.022 92.926594 212.022 89.870594 
+L 212.022 47.086594 
+Q 212.022 44.030594 208.818 44.030594 
+L 123.912 44.030594 
+Q 120.708 44.030594 120.708 47.086594 
+L 120.708 89.870594 
+Q 120.708 92.926594 123.912 92.926594 
+z
+" clip-path="url(#pc3d9d6bf07)" style="fill: #dbeafe; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 236.052 92.926594 
+L 320.958 92.926594 
+Q 324.162 92.926594 324.162 89.870594 
+L 324.162 47.086594 
+Q 324.162 44.030594 320.958 44.030594 
+L 236.052 44.030594 
+Q 232.848 44.030594 232.848 47.086594 
+L 232.848 89.870594 
+Q 232.848 92.926594 236.052 92.926594 
+z
+" clip-path="url(#pc3d9d6bf07)" style="fill: #e0f2fe; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 348.192 92.926594 
+L 441.108 92.926594 
+Q 444.312 92.926594 444.312 89.870594 
+L 444.312 47.086594 
+Q 444.312 44.030594 441.108 44.030594 
+L 348.192 44.030594 
+Q 344.988 44.030594 344.988 47.086594 
+L 344.988 89.870594 
+Q 344.988 92.926594 348.192 92.926594 
+z
+" clip-path="url(#pc3d9d6bf07)" style="fill: #fef3c7; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(36.424375 66.055)">CT patch</text>
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(30.60125 75.317188)">+ weak box</text>
+   </g>
+   <g id="text_2">
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(142.61875 66.055)">Inpaint hole</text>
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(137.31125 75.317188)">(RePaint + RF)</text>
+   </g>
+   <g id="text_3">
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(263.0025 66.055)">Healthy</text>
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(249.39 75.317188)">counterfactual</text>
+   </g>
+   <g id="text_4">
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(361.115625 66.055)">Residual → mask</text>
+    <text style="fill: #1f2937; font: 8px 'DejaVu Sans'" transform="translate(365.5575 75.317188)">(+ refine loop)</text>
+   </g>
+   <g id="patch_6">
+    <path d="M 96.277011 68.478594 
+Q 108.29407 68.478594 118.969488 68.478594 
+" style="fill: none; stroke: #1f2937; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 115.969488 66.978594 
+L 118.969488 68.478594 
+L 115.969488 69.978594 
+" style="fill: none; stroke: #1f2937; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 212.417611 68.478594 
+Q 222.434656 68.478594 231.11006 68.478594 
+" style="fill: none; stroke: #1f2937; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 228.11006 66.978594 
+L 231.11006 68.478594 
+L 228.11006 69.978594 
+" style="fill: none; stroke: #1f2937; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 324.557611 68.478594 
+Q 334.574656 68.478594 343.25006 68.478594 
+" style="fill: none; stroke: #1f2937; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 340.25006 66.978594 
+L 343.25006 68.478594 
+L 340.25006 69.978594 
+" style="fill: none; stroke: #1f2937; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 298.607612 99.811489 
+Q 344.737365 71.535049 392.016068 101.189063 
+" style="fill: none; stroke: #0b3d5c; stroke-linecap: round"/>
+    <path d="M 390.387928 98.515271 
+L 392.016068 101.189063 
+L 388.900151 100.8873 
+" style="fill: none; stroke: #0b3d5c; stroke-linecap: round"/>
+   </g>
+   <g id="text_5">
+    <text style="fill: #0b3d5c; font: 7px 'DejaVu Sans'; text-anchor: start" x="278.505" y="108.588594" transform="rotate(-0 278.505 108.588594)">refine</text>
+   </g>
+   <g id="text_6">
+    <text style="fill: #262626; font: 600 9px 'DejaVu Sans'; text-anchor: start" x="2.16" y="8.998594" transform="rotate(-0 2.16 8.998594)">Method overview (stub — replace with draw.io export)</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc3d9d6bf07">
+   <rect x="2.16" y="14.998594" width="480.6" height="114.6"/>
+  </clipPath>
+ </defs>
+</svg>

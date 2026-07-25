@@ -1,0 +1,18 @@
+# D2 — method overview
+# Render: d2 fig_method_overview.d2 fig_method_overview.svg
+direction: right
+
+A: CT patch + box prompt
+B: Mask hole from boxes
+C: Healthy RF inpainting {
+  style.fill: "#0B3D5C"
+  style.font-color: "#FFFFFF"
+}
+D: Residual |x - x̂|
+E: Threshold + refine R
+F: Anomaly mask ŷ {
+  style.fill: "#047857"
+  style.font-color: "#FFFFFF"
+}
+
+A -> B -> C -> D -> E -> F

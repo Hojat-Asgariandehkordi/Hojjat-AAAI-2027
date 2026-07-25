@@ -1,0 +1,23 @@
+% P0 — Combined LIDC Dice + healthy FP
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_results_bars.pdf}
+  \caption{Matched box prompts: (a) LIDC Dice on true nodules; (b) predicted volume on healthy random boxes.}
+  \label{fig:results}
+\end{figure}
+
+% P1 — FP trade-off
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_healthy_fp_tradeoff.pdf}
+  \caption{Healthy false-positive probe: (a) mean predicted volume; (b) trade-off against LIDC true-nodule Dice.}
+  \label{fig:fp-tradeoff}
+\end{figure}
+
+% P1 — Multi-dataset Dice
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_benchmark_dice_3datasets.pdf}
+  \caption{Mean Dice under matched box prompts on LIDC, MAISI, and NSCLC. Ours uses dataset-specific RF configs.}
+  \label{fig:bench}
+\end{figure*}

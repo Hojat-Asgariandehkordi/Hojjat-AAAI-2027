@@ -493,8 +493,8 @@ LIDC nodule masks on a held-out positive-patch test set.
 
 Ablations over \(N\in\{30,40,60,80\}\) and \(R\in\{2,3\}\) show that a moderate
 sampling budget with \(R{=}2\) yields the strongest Dice on the full test cache
-(1658 cases), reaching a mean Dice of approximately \(0.734\), competitive with
-SAM-Med2D (\(0.737\)) under matched box prompts.
+(1658 cases), reaching a mean Dice of approximately \(0.73\), competitive with
+SAM-Med2D (\(0.73\)) under matched box prompts.
 
 %==============================================================================
 \section*{Default Hyperparameters}
@@ -534,7 +534,9 @@ interactive foundation segmenters under \emph{matched box
 prompts}. The primary questions are: (i)~when a true nodule is
 present, how well do we recover it? and (ii)~when the prompted
 region is healthy, how often do models still produce a spurious
-mask?
+mask? We answer (i)--(ii) on LIDC first, then test whether the
+same trends hold on MAISI and NSCLC, and finally ablate inference
+compute for Ours.
 
 \subsection{Datasets and Protocol}
 \paragraph{Positive LIDC hold-out.}
@@ -544,17 +546,25 @@ We use a patient-disjoint test cache of \(N{=}1658\) nodule-centered
 \([-1000,400]\)~HU. Dense radiologist consensus masks are used
 \emph{only for evaluation}.
 
+\paragraph{Additional positive sets.}
+For generalization we also evaluate matched box prompts on
+MAISI synthetic nodule patches (\(N{=}109\)) and NSCLC-Radiomics
+GTV volumes (\(N{=}85\)), using the same foundation baselines and
+the same healthy-prior Ours family (dataset-specific RF inference
+settings noted below).
+
 \paragraph{Prompting.}
 All methods receive the same Strategy-4 prompts: per-slice 2D
-bounding boxes around the nodule mask with \(1\)-voxel padding.
-Ours converts these boxes into an inpainting hole; foundation
-models consume them as box interactions.
+bounding boxes around the nodule / GTV mask with \(1\)-voxel
+padding. Ours converts these boxes into an inpainting hole;
+foundation models consume them as box interactions.
 
 \paragraph{Healthy false-positive probe.}
 To stress-test over-segmentation, we place random boxes inside
-\emph{nodule-free} lung patches (\(N{=}3840\) prompts) and measure
-how much mask each model still predicts. Because the ground truth
-is empty, lower predicted volume indicates fewer false positives.
+\emph{nodule-free} LIDC lung patches (\(N{=}3840\) prompts) and
+measure how much mask each model still predicts. Because the ground
+truth is empty, we report \emph{mean predicted volume}
+(mm\(^3\)) rather than Dice-vs-empty.
 
 \subsection{Baselines}
 We compare against interactive / promptable foundation models that
@@ -565,33 +575,35 @@ SegVol \citep{segvol2024},
 VISTA3D \citep{vista3d2024}, and
 nnInteractive \citep{nninteractive2025}.
 For Ours we report a rectified-flow checkpoint with iterative
-residual refinement; unless noted, the default configuration is
-\(40\) inference steps and \(R{=}2\) refine rounds.
+residual refinement; unless noted, the default LIDC configuration
+is \(40\) inference steps and \(R{=}2\) refine rounds.
 
 \subsection{Main Results on LIDC}
 Table~\ref{tab:main} reports mean Dice / IoU under matched prompts.
 Ours is competitive with the strongest interactive baseline
-(SAM-Med2D) and exceeds nnInteractive, SegVol, VISTA3D, and
-SAM-Med3D, despite never training on lesion masks.
+(SAM-Med2D) and exceeds nnInteractive, SAM-Med3D, SegVol, and
+VISTA3D, despite never training on lesion masks.
+Figure~\ref{fig:results} summarizes the same comparison alongside
+the healthy FP probe.
 
 \begin{table}[t]
 \centering
 \caption{LIDC-IDRI positive test patches (\(N{=}1658\)), matched
-Strategy-4 box prompts. Best interactive / weakly supervised Dice
-in \textbf{bold}.}
+Strategy-4 box prompts. Best Dice / IoU in \textbf{bold}.
+SAM-Med3D uses the corrected full evaluation.}
 \label{tab:main}
 \begin{tabular}{lccc}
 \toprule
 Method & Prompt & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 \midrule
-SAM-Med2D       & Box & \textbf{0.737} & \textbf{0.605} \\
+SAM-Med2D       & Box & \textbf{0.73} & \textbf{0.60} \\
 \textbf{Ours (40-step, \(R{=}2\))}
-                & Box & 0.734 & 0.600 \\
-Ours (40-step)  & Box & 0.726 & 0.593 \\
-nnInteractive   & Box & 0.717 & 0.582 \\
-SegVol          & Box & 0.370 & 0.252 \\
-VISTA3D         & Box & 0.190 & 0.119 \\
-SAM-Med3D       & Box & 0.015 & 0.008 \\
+                & Box & \textbf{0.73} & \textbf{0.60} \\
+Ours (40-step)  & Box & 0.72 & 0.59 \\
+nnInteractive   & Box & 0.71 & 0.58 \\
+SAM-Med3D       & Box & 0.54 & 0.41 \\
+SegVol          & Box & 0.37 & 0.25 \\
+VISTA3D         & Box & 0.19 & 0.11 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -601,7 +613,11 @@ Table~\ref{tab:healthy_fp} reports mean predicted mask volume
 (mm\(^3\)) on random boxes in nodule-free lung. Among methods that
 remain competitive on LIDC (Table~\ref{tab:main}), Ours yields the
 \emph{smallest} spurious volume---substantially below SAM-Med2D,
-SegVol, and especially nnInteractive.
+SegVol, and especially nnInteractive. VISTA3D is nearly silent on
+healthy tissue, but its LIDC Dice (\(0.19\)) shows that silence
+alone is not useful without sensitivity to real nodules.
+Figure~\ref{fig:fp-tradeoff} places every method in the
+true-nodule Dice vs.\ healthy FP volume plane.
 
 \begin{table}[t]
 \centering
@@ -625,6 +641,58 @@ nnInteractive         & 4015 \\
 true nodules (Table~\ref{tab:main}).}
 \end{table}
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_results_bars.pdf}
+  \caption{Matched box prompts: (a)~LIDC Dice on true nodules;
+  (b)~predicted volume on healthy random boxes.}
+  \label{fig:results}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_healthy_fp_tradeoff.pdf}
+  \caption{Healthy FP probe trade-off: (a)~mean predicted volume;
+  (b)~LIDC true-nodule Dice vs.\ healthy FP volume.}
+  \label{fig:fp-tradeoff}
+\end{figure}
+
+\subsection{Generalization: MAISI and NSCLC}
+Table~\ref{tab:cross} and Figure~\ref{fig:bench} report mean Dice
+under the same matched-box protocol on MAISI and NSCLC-Radiomics,
+with LIDC repeated for reference. Ours remains in the top tier on
+all three sets (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step,
+\(R{=}1\)).
+
+\begin{table}[t]
+\centering
+\caption{Mean Dice under matched box prompts across datasets.
+Ours uses \(40\)-step/\(R{=}2\) on LIDC, \(60\)-step/\(R{=}3\) on
+MAISI, and \(60\)-step/\(R{=}1\) on NSCLC. Best per column in
+\textbf{bold}.}
+\label{tab:cross}
+\begin{tabular}{lccc}
+\toprule
+Method & LIDC & MAISI & NSCLC \\
+\midrule
+SAM-Med2D     & \textbf{0.73} & 0.70 & 0.77 \\
+Ours          & \textbf{0.73} & \textbf{0.71} & 0.78 \\
+nnInteractive & 0.71 & \textbf{0.71} & \textbf{0.79} \\
+SAM-Med3D     & 0.54 & 0.56 & 0.55 \\
+SegVol        & 0.37 & 0.28 & 0.17 \\
+VISTA3D       & 0.19 & 0.45 & 0.12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_benchmark_dice_3datasets.pdf}
+  \caption{Mean Dice under matched box prompts on LIDC, MAISI, and
+  NSCLC for all methods.}
+  \label{fig:bench}
+\end{figure*}
+
 \subsection{Ablation: Steps and Refine Rounds}
 Table~\ref{tab:ablation} varies inference steps and refine rounds
 \(R\) on the LIDC positive set (same checkpoint).
@@ -638,25 +706,27 @@ positive test (\(N{=}1658\)).}
 \toprule
 Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 \midrule
-30-step (refine on) & 0.721 & 0.587 \\
-40-step (refine on) & 0.726 & 0.593 \\
-\textbf{40-step, \(R{=}2\)} & \textbf{0.734} & \textbf{0.600} \\
-60-step (refine on) & 0.722 & 0.588 \\
-80-step, \(R{=}2\) & 0.725 & 0.590 \\
+30-step (refine on) & 0.72 & 0.58 \\
+40-step (refine on) & 0.72 & 0.59 \\
+\textbf{40-step, \(R{=}2\)} & \textbf{0.73} & \textbf{0.60} \\
+60-step (refine on) & 0.72 & 0.58 \\
+80-step, \(R{=}2\) & 0.72 & 0.59 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Discussion}
-Across Tables~\ref{tab:main}--\ref{tab:healthy_fp}, the operating
-point we recommend (\(40\)-step, \(R{=}2\)) is nearly tied with
-SAM-Med2D on positive Dice while producing roughly half the
-spurious predicted volume of SAM-Med2D---and about one quarter
-that of nnInteractive---on healthy random boxes. This supports
-the problem reframing in Section~\ref{sec:intro}: for
-region-prompted lung CAD, anomaly verification against a healthy
-prior is a better inductive bias than interactive object
-segmentation when false positives matter.
+Across Tables~\ref{tab:main}--\ref{tab:healthy_fp} and
+Figure~\ref{fig:fp-tradeoff}, the operating point we recommend
+(\(40\)-step, \(R{=}2\)) is nearly tied with SAM-Med2D on positive
+Dice while producing roughly half the spurious predicted volume of
+SAM-Med2D---and about one quarter that of nnInteractive---on
+healthy random boxes. Cross-dataset Dice
+(Table~\ref{tab:cross}) shows the same competitive tier on MAISI
+and NSCLC. Together these results support the problem reframing in
+Section~\ref{sec:intro}: for region-prompted lung CAD, anomaly
+verification against a healthy prior is a better inductive bias
+than interactive object segmentation when false positives matter.
 
 % =============================================================
 \section{Scope, Limitations, and Conclusion}

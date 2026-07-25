@@ -1,0 +1,18 @@
+// Graphviz DOT — method overview
+// Render: dot -Tpdf -o fig_method_overview.pdf fig_method_overview.dot
+digraph MethodOverview {
+  rankdir=LR;
+  graph [fontname="Helvetica", fontsize=11, bgcolor="white", pad=0.3];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+         fillcolor="#F3F4F6", color="#111827", penwidth=1.1];
+  edge  [fontname="Helvetica", fontsize=9, color="#374151", arrowsize=0.7];
+
+  A [label="CT patch\n+ box prompt"];
+  B [label="Mask hole\nfrom boxes"];
+  C [label="Healthy RF\ninpainting", fillcolor="#0B3D5C", fontcolor="white"];
+  D [label="Residual\n|x − x̂|"];
+  E [label="Threshold\n+ refine R"];
+  F [label="Anomaly mask ŷ", fillcolor="#047857", fontcolor="white"];
+
+  A -> B -> C -> D -> E -> F;
+}

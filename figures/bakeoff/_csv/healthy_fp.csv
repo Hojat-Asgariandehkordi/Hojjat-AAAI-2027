@@ -1,0 +1,8 @@
+method,volume_mm3,note
+VISTA3D,0.0,near-silent but poor on true nodules
+"Ours (60-step, R=3)",1005.74165234375,
+"Ours (40-step, R=2)",1075.666375,
+SegVol,1395.4828671875,
+SAM-Med2D,1980.4310859375,
+SAM-Med3D,2872.272046875,
+nnInteractive,4014.930609375,
