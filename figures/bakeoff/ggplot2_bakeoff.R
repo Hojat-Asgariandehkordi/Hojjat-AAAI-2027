@@ -63,7 +63,10 @@ lidc <- read_csv(file.path(csv_dir, "lidc.csv"), show_col_types = FALSE)
 fp <- read_csv(file.path(csv_dir, "healthy_fp.csv"), show_col_types = FALSE)
 common <- c("SAM-Med2D", "Ours (40-step, R=2)", "nnInteractive", "SAM-Med3D", "SegVol")
 dice_map <- setNames(lidc$dice, lidc$method)
-dice_map[["Ours (40-step, R=2)"]] <- dice_map[["Ours"]]
+# CSV may already use "Ours (40-step, R=2)"; only alias from "Ours" if needed
+if (is.na(dice_map[["Ours (40-step, R=2)"]]) && !is.na(dice_map[["Ours"]])) {
+  dice_map[["Ours (40-step, R=2)"]] <- dice_map[["Ours"]]
+}
 fp_map <- setNames(fp$volume_mm3, fp$method)
 df_rb <- tibble(
   method = common,

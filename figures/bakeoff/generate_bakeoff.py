@@ -70,6 +70,39 @@ def fmt_cut(v, n=2):
     return f"{cut_dp(v, n):.{n}f}"
 
 
+def bold_legend(leg):
+    if leg is None:
+        return None
+    for t in leg.get_texts():
+        t.set_fontweight("bold")
+    title = leg.get_title()
+    if title is not None and title.get_text():
+        title.set_fontweight("bold")
+    return leg
+
+
+def bold_all_text(fig=None, ax=None):
+    axes = [ax] if ax is not None else (list(fig.axes) if fig is not None else [])
+    for a in axes:
+        if a.get_title():
+            a.title.set_fontweight("bold")
+        a.xaxis.label.set_fontweight("bold")
+        a.yaxis.label.set_fontweight("bold")
+        for t in list(a.get_xticklabels()) + list(a.get_yticklabels()):
+            t.set_fontweight("bold")
+        if a.get_legend() is not None:
+            bold_legend(a.get_legend())
+        for child in a.texts:
+            child.set_fontweight("bold")
+    if fig is not None:
+        if getattr(fig, "_suptitle", None) is not None and fig._suptitle is not None:
+            fig._suptitle.set_fontweight("bold")
+        for leg in getattr(fig, "legends", []) or []:
+            bold_legend(leg)
+        for child in fig.texts:
+            child.set_fontweight("bold")
+
+
 def apply_style():
     sns.set_theme(style="whitegrid", context="paper")
     mpl.rcParams.update(
@@ -77,11 +110,16 @@ def apply_style():
             "figure.dpi": AAAI["dpi"],
             "savefig.dpi": AAAI["dpi"],
             "font.family": "DejaVu Sans",
+            "font.weight": "bold",
             "font.size": 8,
             "axes.labelsize": 8.5,
+            "axes.labelweight": "bold",
             "axes.titlesize": 9,
+            "axes.titleweight": "bold",
             "xtick.labelsize": 7.5,
             "ytick.labelsize": 7.5,
+            "legend.fontsize": 8,
+            "legend.title_fontsize": 8,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
             "axes.edgecolor": C["spine"],
@@ -99,6 +137,7 @@ def dest(stem: str, tool: str) -> Path:
 
 
 def save_mpl(fig, d: Path, stem: str):
+    bold_all_text(fig)
     for ext in ("pdf", "svg", "png"):
         fig.savefig(d / f"{stem}.{ext}", bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -113,8 +152,8 @@ def hbar(ax, labels, values, *, colors, xlabel, xlim=None, value_fmt="cut2", hig
         if highlight and highlight in str(lab):
             bar.set_hatch("///")
     ax.set_yticks(y)
-    ax.set_yticklabels(lab_r)
-    ax.set_xlabel(xlabel)
+    ax.set_yticklabels(lab_r, fontweight="bold")
+    ax.set_xlabel(xlabel, fontweight="bold")
     if xlim:
         ax.set_xlim(*xlim)
     ax.xaxis.grid(True, linestyle=":", alpha=0.75, zorder=0)
@@ -130,6 +169,7 @@ def hbar(ax, labels, values, *, colors, xlabel, xlim=None, value_fmt="cut2", hig
             va="center",
             ha="left",
             fontsize=7,
+            fontweight="bold",
             color=C["spine"],
         )
 
@@ -141,8 +181,8 @@ def vbar(ax, labels, values, *, colors, ylabel, ylim=None, value_fmt="cut2", hig
         if highlight and highlight in str(lab):
             bar.set_hatch("///")
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=35, ha="right")
-    ax.set_ylabel(ylabel)
+    ax.set_xticklabels(labels, rotation=35, ha="right", fontweight="bold")
+    ax.set_ylabel(ylabel, fontweight="bold")
     if ylim:
         ax.set_ylim(*ylim)
     ax.yaxis.grid(True, linestyle=":", alpha=0.75, zorder=0)
@@ -151,7 +191,15 @@ def vbar(ax, labels, values, *, colors, ylabel, ylim=None, value_fmt="cut2", hig
     ymax = ylim[1] if ylim else max(values) * 1.14
     for bar, v in zip(bars, values):
         label = f"{v:.0f}" if value_fmt == "int" else fmt_cut(v, 2)
-        ax.text(bar.get_x() + bar.get_width() / 2, v + 0.01 * ymax, label, ha="center", va="bottom", fontsize=6.5)
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            v + 0.01 * ymax,
+            label,
+            ha="center",
+            va="bottom",
+            fontsize=6.5,
+            fontweight="bold",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -162,9 +210,10 @@ df_fp = pd.DataFrame(SNAP["healthy_fp"])
 df_abl = pd.DataFrame(SNAP["ablation"])
 df_lidc = pd.DataFrame(SNAP["lidc"])
 
-# alias Ours dice for tradeoff labels used in paper plots
+# Snapshot may already rename Ours → "Ours (40-step, R=2)"; do not overwrite.
 dice_map = dict(zip(df_lidc["method"], df_lidc["dice"]))
-dice_map["Ours (40-step, R=2)"] = dice_map.get("Ours", float("nan"))
+if "Ours (40-step, R=2)" not in dice_map and "Ours" in dice_map:
+    dice_map["Ours (40-step, R=2)"] = dice_map["Ours"]
 
 
 def write_csvs():
@@ -380,7 +429,14 @@ def bake_multidataset():
     ax.set_xlabel("Mean Dice ↑")
     ax.set_ylabel("")
     ax.set_title("Matched box prompts · LIDC / MAISI / NSCLC", loc="left")
-    ax.legend(title="Dataset", frameon=True, loc="lower right", fontsize=7)
+    leg = ax.legend(
+        title="Dataset",
+        frameon=True,
+        loc="lower right",
+        prop={"weight": "bold", "size": 8},
+        title_fontsize=8,
+    )
+    bold_legend(leg)
     sns.despine(ax=ax)
     fig.tight_layout()
     save_mpl(fig, dest(stem, "seaborn_grouped"), stem)
@@ -404,6 +460,7 @@ def bake_multidataset():
     g.set(xlim=(0, 0.9))
     for ax in g.axes.flat:
         sns.despine(ax=ax)
+    bold_all_text(g.fig)
     g.savefig(dest(stem, "seaborn_facet") / f"{stem}.pdf", bbox_inches="tight")
     g.savefig(dest(stem, "seaborn_facet") / f"{stem}.svg", bbox_inches="tight")
     g.savefig(dest(stem, "seaborn_facet") / f"{stem}.png", bbox_inches="tight", dpi=AAAI["dpi"])
