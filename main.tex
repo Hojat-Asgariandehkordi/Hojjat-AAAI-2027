@@ -234,14 +234,14 @@ LIDC patch.
   \centering
   \includegraphics[width=\textwidth]{figures/fig_method_overview_2.pdf}
   \caption{Method overview.
-  \textbf{Top:} training learns a 3D rectified-flow prior of healthy lung CT
-  from nodule-free patches.
-  \textbf{Bottom:} at inference a weak box prompt defines an initial hole;
-  mask-guided inpainting produces a healthy reconstruction, the residual
-  \(|x-\hat{x}|\) is thresholded to refine the hole, and the process is
-  iterated for \(R\) rounds to yield the final segmentation
-  (red\,=\,GT, lime\,=\,prediction).
-  Inset shows successive mask refinements on LIDC patch \#1370.}
+  \textbf{Top:} a 3D rectified-flow model is trained on nodule-free patches to
+  learn a healthy CT prior.
+  \textbf{Middle:} at inference a box prompt defines an initial hole;
+  mask-guided inpainting (using the prior) yields a healthy reconstruction;
+  the residual \(|x-\hat{x}|\) is thresholded and the hole is refined for
+  \(R\) rounds.
+  \textbf{Bottom:} successive mask refinements on LIDC patch \#1370
+  (red\,=\,GT, lime\,=\,prediction).}
   \label{fig:method}
 \end{figure*}
 
