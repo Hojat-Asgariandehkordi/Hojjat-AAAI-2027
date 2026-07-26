@@ -1,7 +1,7 @@
 % ============================================================
 %  Bibliography for:
 %  "Weakly-Supervised 3D Anomaly Segmentation via
-%   Soft Mask-Coupled Diffusion Inpainting"
+%   Region-Prompted Rectified-Flow Inpainting"
 %  AAAI 2027 Anonymous Submission
 % ============================================================
 
@@ -33,18 +33,6 @@
   pages     = {8780--8794},
   year      = {2021},
   publisher = {Curran Associates},
-}
-
-@inproceedings{repaint2022,
-  author    = {Lugmayr, Andreas and Danelljan, Martin and
-               Romero, Andres and Yu, Fisher and Timofte, Radu
-               and Van Gool, Luc},
-  title     = {{RePaint}: Inpainting Using Denoising Diffusion
-               Probabilistic Models},
-  booktitle = {Proceedings of the {IEEE/CVF} Conference on
-               Computer Vision and Pattern Recognition},
-  pages     = {11461--11471},
-  year      = {2022},
 }
 
 @inproceedings{lugmayr2022repaint,
@@ -127,16 +115,18 @@
   year      = {2022},
 }
 
-@inproceedings{fontanella2023,
-  author    = {Fontanella, Alessandro and Mair, Grant and
-               Wardlaw, Joanna and Trucco, Emanuele and
-               Storkey, Amos},
-  title     = {Diffusion Models for Counterfactual Generation and
-               Anomaly Detection in Brain Images},
-  booktitle = {Proceedings of the {IEEE} Transactions on Medical
-               Imaging},
-  year      = {2024},
-  note      = {arXiv:2308.02062},
+@article{fontanella2023,
+  author  = {Fontanella, Alessandro and Mair, Grant and
+             Wardlaw, Joanna and Trucco, Emanuele and
+             Storkey, Amos},
+  title   = {Diffusion Models for Counterfactual Generation and
+             Anomaly Detection in Brain Images},
+  journal = {{IEEE} Transactions on Medical Imaging},
+  volume  = {43},
+  number  = {12},
+  pages   = {4227--4239},
+  year    = {2024},
+  doi     = {10.1109/TMI.2024.3460391},
 }
 
 @misc{latent_ad2023,
@@ -153,14 +143,18 @@
   year          = {2023},
 }
 
-@misc{synomaly2024,
-  author        = {Anand, Hritik and Tao, Alan},
-  title         = {Synomaly Noise and Multi-Stage Diffusion:
-                   A Novel Approach for Unsupervised Anomaly
-                   Detection in Ultrasound Imaging},
-  eprint        = {2411.04004},
-  archivePrefix = {arXiv},
-  year          = {2024},
+@article{synomaly2024,
+  author  = {Bi, Yuan and Huang, Lucie and Clarenbach, Ricarda and
+             Ghotbi, Reza and Karlas, Angelos and Navab, Nassir and
+             Jiang, Zhongliang},
+  title   = {Synomaly Noise and Multi-Stage Diffusion: A Novel
+             Approach for Unsupervised Anomaly Detection in
+             Medical Images},
+  journal = {Medical Image Analysis},
+  volume  = {105},
+  pages   = {103737},
+  year    = {2025},
+  doi     = {10.1016/j.media.2025.103737},
 }
 
 @inproceedings{itermask2024,
@@ -177,20 +171,23 @@
 }
 
 @inproceedings{fdp2026,
-  author    = {Anonymous},
+  author    = {Li, Hao and Zhuang, Zhenfeng and Lin, Jingyu and
+               Liu, Yu and Chen, Yifei and Peng, Qiong and
+               Yu, Lequan and Wang, Liansheng},
   title     = {{FDP}: A Frequency-Decomposition Preprocessing
                Pipeline for Unsupervised Anomaly Detection in
                Brain {MRI}},
   booktitle = {Proceedings of the {AAAI} Conference on
                Artificial Intelligence},
   year      = {2026},
-  note      = {To appear},
+  note      = {arXiv:2511.12899},
 }
 
 % ── Adaptive mask inpainting ─────────────────────────────────
 
 @misc{aminet2024,
-  author        = {Luo, Wei and others},
+  author        = {Luo, Wei and Yao, Haiming and Yu, Wenyong and
+                   Li, Zhengyong},
   title         = {{AMI-Net}: Adaptive Mask Inpainting Network
                    for Industrial Anomaly Detection and
                    Localization},
@@ -200,14 +197,15 @@
 }
 
 @inproceedings{madpaint2025,
-  author    = {Liu, Haipeng and Wang, Yang and Qian, Biao and
-               Wang, Meng and Rui, Yong},
+  author    = {Jiang, Shipeng and Qu, Jingwei and Huang, Bingyao},
   title     = {{MAD-paint}: Mask-Aware Diffusion Sampling for
                Image Inpainting},
   booktitle = {Proceedings of the International Conference on
                Multimedia Retrieval},
+  pages     = {607--615},
   publisher = {{ACM}},
   year      = {2025},
+  doi       = {10.1145/3731715.3733381},
 }
 
 % ── Classic unsupervised AD / AutoDDPM ───────────────────────
@@ -300,17 +298,19 @@
   year      = {2024},
 }
 
-@misc{vista3d2024,
-  author        = {He, Yufan and Guo, Pengfei and Tang, Yucheng
-                   and Myronenko, Andriy and Nath, Vishwesh and
-                   Xu, Ziyue and Yang, Dong and Zhao, Can and
-                   Simon, Benjamin and Belue, Mason and
-                   others},
-  title         = {{VISTA3D}: A Unified Segmentation Foundation
-                   Model for {3D} Medical Imaging},
-  eprint        = {2406.05285},
-  archivePrefix = {arXiv},
-  year          = {2024},
+@inproceedings{vista3d2024,
+  author    = {He, Yufan and Guo, Pengfei and Tang, Yucheng and
+               Myronenko, Andriy and Nath, Vishwesh and
+               Xu, Ziyue and Yang, Dong and Zhao, Can and
+               Simon, Benjamin and Belue, Mason and
+               Harmon, Stephanie and Turkbey, Baris and
+               Xu, Daguang and Li, Wenqi},
+  title     = {{VISTA3D}: A Unified Segmentation Foundation
+               Model for {3D} Medical Imaging},
+  booktitle = {Proceedings of the {IEEE/CVF} Conference on
+               Computer Vision and Pattern Recognition},
+  year      = {2025},
+  note      = {arXiv:2406.05285},
 }
 
 @misc{medsam2_2025,
@@ -396,7 +396,8 @@
 % ── Weakly supervised segmentation ──────────────────────────
 
 @misc{rectflow2026,
-  author        = {Anonymous},
+  author        = {Petersen, Richard and Kahl, Fredrik and
+                   Alv{\'e}n, Jennifer},
   title         = {Weakly-Supervised Lung Nodule Segmentation
                    via Training-Free Guidance of {3D} Rectified
                    Flow},
@@ -450,6 +451,40 @@
   pages   = {915--931},
   year    = {2011},
   doi     = {10.1118/1.3528204},
+}
+
+@inproceedings{maisi2025,
+  author    = {Guo, Pengfei and Zhao, Can and Yang, Dong and
+               Xu, Ziyue and Nath, Vishwesh and Tang, Yucheng and
+               Simon, Benjamin and Belue, Mason and
+               Harmon, Stephanie and Turkbey, Baris and Xu, Daguang},
+  title     = {{MAISI}: Medical {AI} for Synthetic Imaging},
+  booktitle = {Proceedings of the {IEEE/CVF} Winter Conference on
+               Applications of Computer Vision},
+  pages     = {4430--4440},
+  year      = {2025},
+  doi       = {10.1109/WACV61041.2025.00435},
+}
+
+@article{aerts2014nsclc,
+  author  = {Aerts, Hugo J. W. L. and Velazquez, Emmanuel Rios and
+             Leijenaar, Ralph T. H. and Parmar, Chintan and
+             Grossmann, Patrick and Carvalho, Sara and
+             Bussink, Johan and Monshouwer, Ren{\'e} and
+             Haibe-Kains, Benjamin and Rietveld, Derek and
+             Hoebers, Frank and Rietbergen, Michelle M. and
+             Leemans, C. Ren{\'e} and Dekker, Andre and
+             Quackenbush, John and Gillies, Robert J. and
+             Lambin, Philippe},
+  title   = {Decoding Tumour Phenotype by Noninvasive Imaging Using
+             a Quantitative Radiomics Approach},
+  journal = {Nature Communications},
+  volume  = {5},
+  pages   = {4006},
+  year    = {2014},
+  doi     = {10.1038/ncomms5006},
+  note    = {NSCLC-Radiomics collection also available via {TCIA},
+             DOI: 10.7937/K9/TCIA.2015.PF0M9REI},
 }
 
 @article{luna2017,
