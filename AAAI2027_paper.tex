@@ -689,11 +689,13 @@ NSCLC-Radiomics, with LIDC repeated for reference. Ours remains in the top tier 
 all three sets (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step,
 \(R{=}1\)), tracking nnInteractive / SAM-Med2D while continuing to
 beat SegVol and VISTA3D by a wide margin. Figure~\ref{fig:qual-cross}
-shows the corresponding overlays on MAISI synthetic nodules and NSCLC
-tumors: Ours again tracks irregular GT boundaries closely, while the
-same foundation columns exhibit under-segmentation, boxy inflation, or
-scattered false positives. This suggests the healthy-prior residual is
-not an LIDC-only artifact.
+shows the corresponding overlays on MAISI synthetic nodules and
+matched NSCLC \(64^3\) tumor patches (same visual protocol as
+LIDC/MAISI); Figure~\ref{fig:qual-nsclc-vol} shows the same four
+NSCLC cases as full-volume slices. Ours again tracks irregular GT
+boundaries closely, while the same foundation columns exhibit
+under-segmentation, boxy inflation, or scattered false positives.
+This suggests the healthy-prior residual is not an LIDC-only artifact.
 
 \begin{table}[t]
 \centering
@@ -739,10 +741,23 @@ VISTA3D       & 0.19 & 0.45 & 0.12 \\
   \caption{Cross-dataset qualitative overlays (red~=~GT, lime~=~prediction).
   Top: MAISI synthetic nodules (same method columns as
   Figure~\ref{fig:qual-lidc}; Ours \(60\)-step/\(R{=}3\)).
-  Bottom: NSCLC-Radiomics tumors with Ours (\(60\)-step, \(R{=}1\)).
+  Bottom: NSCLC-Radiomics \(64^3\) tumor patches cropped from the
+  processed volumes (same columns; Ours \(60\)-step, \(R{=}1\);
+  cases LUNG1-024 / 145 / 098 / 173).
   On both sets, Ours hugs the GT contour more tightly than the
   interactive / foundation baselines.}
   \label{fig:qual-cross}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_nsclc_volume.pdf}
+  \caption{NSCLC-Radiomics whole-volume overlays for the same four
+  patients as in Figure~\ref{fig:qual-cross} (red~=~GT,
+  lime~=~prediction; Ours \(60\)-step, \(R{=}1\)). Patch crops in
+  Figure~\ref{fig:qual-cross} use the matched \(64^3\) regions from
+  these volumes.}
+  \label{fig:qual-nsclc-vol}
 \end{figure*}
 
 \subsection{Ablation: Steps and Refine Rounds}
@@ -804,7 +819,8 @@ shows the same competitive tier on MAISI and NSCLC. The ablation
 (Table~\ref{tab:ablation}, Figures~\ref{fig:ablation} and
 \ref{fig:qual-ablation}) confirms that extra sampling steps beyond
 this point do not help. Qualitative model-output overlays
-(Figures~\ref{fig:qual-lidc},~\ref{fig:qual-fp}, and~\ref{fig:qual-cross})
+(Figures~\ref{fig:qual-lidc},~\ref{fig:qual-fp},~\ref{fig:qual-cross},
+and~\ref{fig:qual-nsclc-vol})
 make the quantitative story visible: under the same Strategy-4 boxes,
 Ours recovers tight GT-aligned masks on LIDC/MAISI/NSCLC nodules,
 stays sparse on healthy prompts relative to object-centric baselines,

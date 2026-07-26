@@ -48,6 +48,8 @@ ABLATION_CASES = [1370, 76, 1183]
 MAISI_CASES = [50, 9, 86, 16]  # Dice ≈ 0.87 / 0.86 / 0.84 / 0.84 (compact)
 HEALTHY_CASES = [217, 1365, 1532, 2002]
 NSCLC_PATIENTS = ["LUNG1-024", "LUNG1-145", "LUNG1-098", "LUNG1-173"]  # Dice ≈ 0.90–0.89
+# One 64³ test-cache patch per patient (high Ours Dice, compact mid-slice).
+NSCLC_PATCHES = [69, 352, 239, 431]  # LUNG1-024 / 145 / 098 / 173
 
 # Mild CT display (avoid harsh high-contrast black/white). LIDC caches are often
 # already clipped to ~[0, 400]; MAISI/NSCLC keep true HU.
@@ -483,8 +485,6 @@ def _draw_paper_grid(stores, col_keys, col_labels, stem, title, hu_min, hu_max, 
             if show_gt_on_all:
                 _contour(ax, _safe_slice(st.nodule, st.z), "red", 1.15)
             _style(ax, col_labels.get(key, key) if r == 0 else "")
-            if c == 0:
-                ax.set_ylabel(f"#{st.sample_index}", fontweight="bold", fontsize=9)
     fig.suptitle(title, fontweight="bold", fontsize=11, y=1.01)
     fig.tight_layout()
     save_fig(fig, stem)
@@ -578,21 +578,109 @@ def run_maisi(force: bool) -> None:
     )
 
 
-def run_healthy_compose() -> None:
-    """Compose paper healthy-FP figure from existing gallery (12×7) — 4 informative rows.
+def _bbox_to_mask(shape, bbox_zyx) -> np.ndarray:
+    z0, y0, x0, z1, y1, x1 = [int(v) for v in bbox_zyx]
+    mask = np.zeros(tuple(shape), dtype=np.float32)
+    mask[z0 : z1 + 1, y0 : y1 + 1, x0 : x1 + 1] = 1.0
+    return mask
 
-    Full re-infer of healthy FP requires scripts.benchmark_healthy_fp (py312-only pyc).
-    We crop paper-aligned columns/rows from the existing gallery and relabel.
+
+def _mid_box_z(bbox_zyx) -> int:
+    z0, _, _, z1, _, _ = [int(v) for v in bbox_zyx]
+    return int((z0 + z1) // 2)
+
+
+def _run_nni_healthy(case_indices: list[int]) -> dict[int, np.ndarray]:
+    """Re-infer nnInteractive on healthy random-box prompts (fixes empty gallery column).
+
+    Important: ``benchmark_nninteractive._ensure_controlnet_scripts`` reloads
+    ``scripts.*`` and would wipe an in-memory ``_POSITIVE_CACHE`` injection, so
+    we pass a custom ``load_sample_fn`` that returns box-filled nodules.
     """
+    import json
+
+    import torch
+
+    from scripts.benchmark_nninteractive import (
+        load_nninteractive_session,
+        prepare_nninteractive_model,
+        run_nninteractive_on_cases,
+    )
+    from scripts.benchmark_test_foundation import normalize_inpaint_data_cfg
+    from scripts.setting import load_yaml_config
+
+    cfg = load_yaml_config(CNET / "configs/benchmark_healthy_fp_random_boxes.yaml")
+    data_cfg = normalize_inpaint_data_cfg(cfg)
+    cache_path = Path(data_cfg["positive_patch_cache"])
+    if not cache_path.is_absolute():
+        cache_path = (ROOT / cache_path).resolve()
+        data_cfg["positive_patch_cache"] = str(cache_path)
+
+    boxes_path = Path(cfg["random_boxes_json"])
+    if not boxes_path.is_absolute():
+        boxes_path = (ROOT / boxes_path).resolve()
+    by_idx = {
+        int(b["patch_index"]): b
+        for b in json.loads(boxes_path.read_text())["boxes"]
+    }
+
+    LOG.info("Loading healthy cache for nnInteractive prompt injection …")
+    samples = torch.load(cache_path, map_location="cpu", weights_only=False)
+    prompt_by_idx: dict[int, dict] = {}
+    for i in case_indices:
+        s = dict(samples[int(i)])
+        rec = by_idx[int(i)]
+        shape = tuple(int(x) for x in s["hu"].shape)
+        s["nodule"] = torch.as_tensor(_bbox_to_mask(shape, rec["bbox_zyx"]))
+        s["is_positive"] = True
+        s["fp_prompt_box"] = True
+        prompt_by_idx[int(i)] = s
+    LOG.info("Prepared %d prompted healthy samples", len(prompt_by_idx))
+
+    def _load_sample(cfg_unused, sample_index=None):  # noqa: ARG001
+        return prompt_by_idx[int(sample_index)]
+
+    prepare_nninteractive_model()
+    session = load_nninteractive_session(device="cuda")
+    LOG.info("Running nnInteractive on cases %s", case_indices)
+    results = run_nninteractive_on_cases(
+        case_indices,
+        data_cfg,
+        session,
+        hu_min=float(cfg.get("hu_min", -1000)),
+        hu_max=float(cfg.get("hu_max", 400)),
+        threshold=float(cfg.get("nodule_threshold", 0.5)),
+        padding_voxels=int(cfg.get("bbox_padding_voxels_fm", 2)),
+        prompt_mode="strategy4_slice_bbox",
+        load_sample_fn=_load_sample,
+    )
+    out: dict[int, np.ndarray] = {}
+    for case in results:
+        idx = int(case["index"])
+        pred = np.asarray(case["pred"], dtype=np.float32)
+        out[idx] = pred
+        LOG.info("nnInteractive #%s voxels=%d", idx, int((pred > 0.5).sum()))
+    return out
+
+
+def run_healthy_compose() -> None:
+    """Compose paper healthy-FP figure; re-draw nnInteractive (gallery column was empty)."""
+    import json
+
     from PIL import Image
 
+    import torch
+
     src = CNET / "runs/benchmark_healthy_fp_random_boxes/visual_comparison_healthy_fp.png"
+    meta_path = CNET / "runs/benchmark_healthy_fp_random_boxes/visual_comparison_healthy_fp.json"
     if not src.is_file():
         raise FileNotFoundError(src)
     im = np.array(Image.open(src).convert("RGB"))
-    H, W, _ = im.shape
-    # 12 rows × 7 cols of ~296px panels (from earlier analysis)
-    # Find content segments
+    meta = json.loads(meta_path.read_text()) if meta_path.is_file() else {}
+    viz_indices = [int(x) for x in meta.get("viz_indices", [])]
+    if not viz_indices:
+        viz_indices = list(HEALTHY_CASES)
+
     col_mean = im.mean(axis=(0, 2))
     row_mean = im.mean(axis=(1, 2))
     white_c = col_mean > 245
@@ -616,31 +704,31 @@ def run_healthy_compose() -> None:
 
     csegs, rsegs = segs(white_c), segs(white_r)
     LOG.info("healthy gallery panels: %d cols × %d rows", len(csegs), len(rsegs))
-    # Prefer rows where Ours is nearly empty (best FP rejection) while SAM/SegVol
-    # still paint — gallery cols: 0 prompt, 1 sam2d, 2 sam3d, 3 segvol, 4 vista, 5 nni, 6 ours
-    def _lime_frac(tile: np.ndarray) -> float:
-        lime = (tile[:, :, 1] > 180) & (tile[:, :, 0] < 120) & (tile[:, :, 2] < 120)
-        return float(lime.mean())
+    idx_to_row = {idx: ri for ri, idx in enumerate(viz_indices) if ri < len(rsegs)}
 
-    pick_rows = []
-    for ri, (y0, y1) in enumerate(rsegs):
-        fracs = []
-        for ci in range(len(csegs)):
-            x0, x1 = csegs[ci]
-            fracs.append(_lime_frac(im[y0:y1, x0:x1]))
-        base_fp = (fracs[1] + fracs[2] + fracs[3]) if len(fracs) > 3 else sum(fracs[1:3])
-        ours_fp = fracs[6] if len(fracs) > 6 else 0.0
-        score = base_fp - 20.0 * ours_fp
-        pick_rows.append((score, ri, ours_fp, base_fp))
-    pick_rows.sort(reverse=True)
-    row_ids = sorted([ri for _, ri, _, _ in pick_rows[:4]])
-    LOG.info(
-        "healthy row pick scores: %s",
-        [(ri, round(sc, 4), round(of, 4)) for sc, ri, of, _ in pick_rows[:4]],
-    )
+    # Prefer curated cases with large nnInteractive FP volume (from benchmark CSV).
+    case_ids = [i for i in HEALTHY_CASES if i in idx_to_row]
+    if len(case_ids) < 4:
+        case_ids = viz_indices[:4]
+    LOG.info("healthy paper cases: %s", case_ids)
 
-    # Paper column order: prompt, sam2d, nni, sam3d, segvol, vista, ours
+    nni_preds = _run_nni_healthy(case_ids)
+
+    # Load HU + prompt boxes for redrawing the nnInteractive column.
+    boxes = {
+        int(b["patch_index"]): b
+        for b in json.loads(
+            (CNET / "runs/benchmark_healthy_fp_random_boxes/random_boxes.json").read_text()
+        )["boxes"]
+    }
+    cache_path = CNET / "runs/diffusion/healthy_patches_cache_test.pt"
+    LOG.info("Loading healthy HU cache for panel redraw …")
+    samples = torch.load(cache_path, map_location="cpu", weights_only=False)
+
+    # Gallery cols: 0 prompt, 1 sam2d, 2 sam3d, 3 segvol, 4 vista, 5 nni, 6 ours
+    # Paper order: prompt, sam2d, nni, sam3d, segvol, vista, ours
     src_cols = [0, 1, 5, 2, 3, 4, 6]
+    nni_paper_col = 2
     labels = [
         "Prompt",
         "SAM-Med2D",
@@ -650,13 +738,35 @@ def run_healthy_compose() -> None:
         "VISTA3D",
         "Ours (60-step, R=3)*",
     ]
-    fig, axes = plt.subplots(4, 7, figsize=(1.7 * 7, 1.7 * 4), squeeze=False)
-    for r, ri in enumerate(row_ids):
+    fig, axes = plt.subplots(len(case_ids), 7, figsize=(1.7 * 7, 1.7 * len(case_ids)), squeeze=False)
+    for r, idx in enumerate(case_ids):
+        ri = idx_to_row[idx]
         y0, y1 = rsegs[ri]
         for c, ci in enumerate(src_cols):
-            x0, x1 = csegs[ci]
-            axes[r, c].imshow(im[y0:y1, x0:x1])
-            _style(axes[r, c], labels[c] if r == 0 else "")
+            ax = axes[r, c]
+            if c == nni_paper_col:
+                sample = samples[idx]
+                hu = np.asarray(sample["hu"], dtype=np.float32)
+                z = _mid_box_z(boxes[idx]["bbox_zyx"])
+                # Healthy cache HU is usually normalized to ~[0, 1].
+                if float(hu.max()) <= 1.5:
+                    gray = np.clip(hu[z], 0, 1)
+                    if DISPLAY_GAMMA != 1.0:
+                        gray = np.power(gray, float(DISPLAY_GAMMA))
+                else:
+                    gray = _gray(hu[z])
+                ax.imshow(gray, cmap="gray", vmin=0, vmax=1)
+                prompt = _bbox_to_mask(hu.shape, boxes[idx]["bbox_zyx"])
+                _contour(ax, prompt[z], "yellow", 1.1)
+                pred = nni_preds.get(idx)
+                if pred is not None:
+                    _contour(ax, np.asarray(pred)[z], "lime", 1.45)
+                else:
+                    LOG.warning("Missing nnInteractive pred for #%s", idx)
+            else:
+                x0, x1 = csegs[ci]
+                ax.imshow(im[y0:y1, x0:x1])
+            _style(ax, labels[c] if r == 0 else "")
     fig.suptitle(
         "Healthy FP — yellow=prompt, lime=prediction (GT empty)\n"
         "*Gallery Ours was 60-step R=1; table reports R=3 (same checkpoint family).",
@@ -668,8 +778,29 @@ def run_healthy_compose() -> None:
     save_fig(fig, "fig_qual_healthy_fp")
 
 
+def _nsclc_extract_patch(vol: np.ndarray, center) -> np.ndarray | None:
+    """Crop 64³ from processed NSCLC volume and reorient to patch-cache axes.
+
+    Patch centers are stored as (z, y, x) in processed space; NIfTI arrays are
+    (y, x, z). Matching orientation is ``transpose(crop, (2, 1, 0))``.
+    """
+    c = [int(x) for x in (center.tolist() if hasattr(center, "tolist") else center)]
+    center_vol = [c[2], c[1], c[0]]
+    ps = 64
+    starts = [ci - ps // 2 for ci in center_vol]
+    if any(st < 0 or st + ps > vol.shape[i] for i, st in enumerate(starts)):
+        return None
+    sl = tuple(slice(st, st + ps) for st in starts)
+    crop = vol[sl]
+    if crop.shape != (ps, ps, ps):
+        return None
+    return np.ascontiguousarray(np.transpose(crop, (2, 1, 0)))
+
+
 def run_nsclc() -> None:
+    """NSCLC qualitative grids: volume slices + 64³ patch crops (paper main)."""
     import nibabel as nib
+    import torch
 
     base = CNET / "runs/benchmark_nsclc_volume_full_masks"
     methods = [
@@ -681,38 +812,93 @@ def run_nsclc() -> None:
         ("VISTA3D", "seg_vista3d"),
         ("Ours (60-step, R=1)", "seg_ours"),
     ]
-    fig, axes = plt.subplots(len(NSCLC_PATIENTS), len(methods), figsize=(1.8 * len(methods), 1.8 * len(NSCLC_PATIENTS)), squeeze=False)
+
+    # ---- Volume-wise (full axial / best-axis slice) ----
+    fig, axes = plt.subplots(
+        len(NSCLC_PATIENTS), len(methods), figsize=(1.8 * len(methods), 1.8 * len(NSCLC_PATIENTS)), squeeze=False
+    )
     for r, pid in enumerate(NSCLC_PATIENTS):
-        ct_nii = nib.load(str(base / "processed_ct" / f"{pid}.nii.gz"))
-        gt_nii = nib.load(str(base / "processed_gtv" / f"{pid}.nii.gz"))
-        ct = np.asanyarray(ct_nii.dataobj).astype(np.float32)
-        gt = np.asanyarray(gt_nii.dataobj) > 0.5
-        # Per-axis 1D mass profiles (sum over the other two axes)
-        profiles = [
-            gt.sum(axis=tuple(i for i in range(3) if i != ax)) for ax in range(3)
-        ]
+        ct = np.asanyarray(nib.load(str(base / "processed_ct" / f"{pid}.nii.gz")).dataobj).astype(np.float32)
+        gt = np.asanyarray(nib.load(str(base / "processed_gtv" / f"{pid}.nii.gz")).dataobj) > 0.5
+        profiles = [gt.sum(axis=tuple(i for i in range(3) if i != ax)) for ax in range(3)]
         slice_axis = int(np.argmax([float(p.max()) for p in profiles]))
         z = int(np.argmax(profiles[slice_axis]))
         sl = np.take(ct, z, axis=slice_axis)
         g2 = np.take(gt, z, axis=slice_axis)
-        # orient: show with origin upper like axial CT
-        gray = _gray(sl)  # adaptive darker window
+        gray = _gray(sl)
         for c, (title, folder) in enumerate(methods):
             ax = axes[r, c]
             ax.imshow(np.rot90(gray), cmap="gray", vmin=0, vmax=1)
             if folder is not None:
                 pred = np.asanyarray(nib.load(str(base / folder / f"{pid}.nii.gz")).dataobj) > 0.5
-                if pred.shape != gt.shape:
-                    # try match by transpose permutations lightly
-                    if pred.T.shape == gt.shape:
-                        pred = pred.T
+                if pred.shape != gt.shape and pred.T.shape == gt.shape:
+                    pred = pred.T
                 p2 = np.take(pred, z, axis=slice_axis)
                 _contour(ax, np.rot90(p2), "lime", 1.45)
             _contour(ax, np.rot90(g2), "red", 1.15)
             _style(ax, title if r == 0 else "")
-            if c == 0:
-                ax.set_ylabel(pid, fontweight="bold", fontsize=8)
-    fig.suptitle("NSCLC-Radiomics — red=GT, lime=prediction", fontweight="bold", fontsize=11, y=1.01)
+    fig.suptitle("NSCLC-Radiomics (volume) — red=GT, lime=prediction", fontweight="bold", fontsize=11, y=1.01)
+    fig.tight_layout()
+    save_fig(fig, "fig_qual_nsclc_volume")
+
+    # ---- Patch-wise 64³ (same visual language as LIDC / MAISI) ----
+    cache_path = CNET / "runs/nsclc/positive_patches_cache_test.pt"
+    LOG.info("Loading NSCLC patch cache %s", cache_path)
+    cache = torch.load(cache_path, map_location="cpu", weights_only=False)
+    vol_cache: dict[str, dict[str, np.ndarray]] = {}
+
+    def _vol(pid: str, folder: str | None) -> np.ndarray:
+        key = f"{pid}:{folder or 'gtv'}"
+        if key not in vol_cache:
+            if folder is None:
+                path = base / "processed_gtv" / f"{pid}.nii.gz"
+            elif folder == "__ct__":
+                path = base / "processed_ct" / f"{pid}.nii.gz"
+            else:
+                path = base / folder / f"{pid}.nii.gz"
+            arr = np.asanyarray(nib.load(str(path)).dataobj)
+            vol_cache[key] = arr.astype(np.float32) if folder == "__ct__" else (arr > 0.5)
+        return vol_cache[key]
+
+    fig, axes = plt.subplots(
+        len(NSCLC_PATCHES), len(methods), figsize=(1.65 * len(methods), 1.65 * len(NSCLC_PATCHES)), squeeze=False
+    )
+    for r, (pid, pidx) in enumerate(zip(NSCLC_PATIENTS, NSCLC_PATCHES)):
+        sample = cache[int(pidx)]
+        if str(sample.get("patient_id")) != pid:
+            LOG.warning("NSCLC patch %s patient_id=%s (expected %s)", pidx, sample.get("patient_id"), pid)
+        center = sample["center"]
+        hu = np.asarray(sample["hu"], dtype=np.float32)
+        # Cache is normalized [0,1] ← HU window [-1000,400]
+        hu_hu = hu * 1400.0 - 1000.0 if float(hu.max()) <= 1.5 else hu
+        nod = np.asarray(sample["nodule"]) > 0.5
+        z = int(np.argmax(nod.sum(axis=(1, 2))))
+        gray = _gray(hu_hu[z])
+        # Sanity: volume GT crop should match cache nodule
+        gtc = _nsclc_extract_patch(_vol(pid, None), center)
+        if gtc is not None:
+            dice_gt = 2.0 * float((gtc & nod).sum()) / max(1.0, float(gtc.sum() + nod.sum()))
+            if dice_gt < 0.99:
+                LOG.warning("NSCLC patch #%s GT align dice=%.3f", pidx, dice_gt)
+        for c, (title, folder) in enumerate(methods):
+            ax = axes[r, c]
+            ax.imshow(gray, cmap="gray", vmin=0, vmax=1)
+            if folder is not None:
+                pred_vol = _vol(pid, folder)
+                pred = _nsclc_extract_patch(pred_vol, center)
+                if pred is None:
+                    LOG.warning("NSCLC patch crop failed %s %s", pid, folder)
+                else:
+                    _contour(ax, pred[z], "lime", 1.45)
+            _contour(ax, nod[z], "red", 1.15)
+            _style(ax, title if r == 0 else "")
+        LOG.info("NSCLC patch row %s #%s z=%d nodule_vox=%d", pid, pidx, z, int(nod.sum()))
+    fig.suptitle(
+        "NSCLC-Radiomics (64³ patches) — red=GT, lime=prediction",
+        fontweight="bold",
+        fontsize=11,
+        y=1.01,
+    )
     fig.tight_layout()
     save_fig(fig, "fig_qual_nsclc")
 
