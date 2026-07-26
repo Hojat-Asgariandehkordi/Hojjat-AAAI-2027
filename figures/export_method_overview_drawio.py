@@ -80,13 +80,13 @@ def main() -> None:
 
     parts: list[str] = ['    <mxCell id="0"/>\n', '    <mxCell id="1" parent="0"/>\n']
 
-    # Training
+    # Training (LIDC #1370 stacks) / Inference (LIDC #1183 stacks)
     train_specs = [
-        ("t_healthy", "img", "healthy_patch.png", "Healthy CT patch", 90),
-        ("t_noise", "img", "noise_patch.png", "Noise", 90),
+        ("t_healthy", "img", "healthy_patch.png", "Healthy 64³\n(3 slices)", 90),
+        ("t_noise", "img", "noise_patch.png", "Noise volume", 90),
         ("t_rf", "box", None, "3D Rectified\nFlow Network", 150),
         ("t_loss", "box", None, "Velocity Loss", 120),
-        ("t_prior", "img", "learned_prior.png", "Learned healthy prior", 90),
+        ("t_prior", "img", "learned_prior.png", "Learned healthy\nprior (3D)", 90),
     ]
     gap, ty, img = 36, 80, 90
     tw = sum(s[4] for s in train_specs) + gap * (len(train_specs) - 1)
@@ -150,7 +150,7 @@ def main() -> None:
 
     # Inference
     infer_specs = [
-        ("i_ct", "img", "test_ct.png", "CT patch", 78),
+        ("i_ct", "img", "test_ct.png", "CT 64³\n(3 slices)", 78),
         ("i_box", "img", "box_prompt.png", "Box prompt", 78),
         ("i_hole", "img", "initial_hole.png", "Initial hole", 78),
         ("i_inpaint", "box", None, "Mask-guided RF\ninpainting\n(uses prior)", 140),
