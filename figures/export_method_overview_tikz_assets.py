@@ -162,49 +162,50 @@ def _annotate_z_strip(rgb: np.ndarray, z_ids: list[int]) -> np.ndarray:
     return rgb
 
 
-def main(case_index: int = 1370) -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    stores = pickle.loads((CACHE / "lidc_stores.pkl").read_bytes())
-    st = next((s for s in stores if int(s["sample_index"]) == case_index), stores[0])
+def _load_case(stores, case_index: int):
+    st = next((s for s in stores if int(s["sample_index"]) == case_index), None)
+    if st is None:
+        raise KeyError(f"case #{case_index} not in lidc_stores.pkl")
     z = int(st["z"])
     hu = _to_np(st["gt_hu"])
-    nod = (_to_np(st["nodule"]) > 0.5)
-    pred = (_to_np(st["preds"]["ours:40s_r2"]) > 0.5)
+    nod = _to_np(st["nodule"]) > 0.5
+    pred = _to_np(st["preds"]["ours:40s_r2"]) > 0.5
     inp = np.squeeze(_to_np(st["ours_inp"]["40s_r2"]))
-
-    # gray volumes once (shared windowing per-slice still via _gray)
     hu_g = np.stack([_gray(hu[zi]) for zi in range(hu.shape[0])], axis=0)
     inp_g = np.stack([_gray(inp[zi]) for zi in range(inp.shape[0])], axis=0)
     z_ids = _slice_ids(z, N_STACK, hu.shape[0])
-    print(f"Case #{int(st['sample_index'])}  center z={z}  stack z={z_ids}")
+    return st, z, hu_g, inp_g, nod, pred, z_ids
 
-    mapping = {
+
+def main(train_case: int = 1370, infer_case: int = 1183) -> None:
+    """Export assets with separate LIDC cases for training vs inference rows.
+
+    Default: train visuals from #1370; inference / refinement from #1183
+    (clear centered nodule, distinct from the training exemplar).
+    """
+    OUT.mkdir(parents=True, exist_ok=True)
+    stores = pickle.loads((CACHE / "lidc_stores.pkl").read_bytes())
+
+    tr = _load_case(stores, train_case)
+    inf = _load_case(stores, infer_case)
+    _, z_tr, hu_tr, inp_tr, nod_tr, pred_tr, z_tr_ids = tr
+    _, z_inf, hu_inf, inp_inf, nod_inf, pred_inf, z_inf_ids = inf
+    print(f"TRAIN  case #{train_case}  z={z_tr}  stack={z_tr_ids}")
+    print(f"INFER  case #{infer_case}  z={z_inf}  stack={z_inf_ids}")
+
+    # Training-row assets (healthy prior family)
+    train_map = {
         "healthy_patch.png": "healthy",
         "noise_patch.png": "noise",
         "learned_prior.png": "prior",
-        "test_ct.png": "ct",
-        "box_prompt.png": "box",
-        "initial_hole.png": "hole",
-        "healthy_reconstruction.png": "recon",
-        "residual.png": "residual",
-        "threshold.png": "threshold",
-        "final_seg.png": "final",
-        "iter1.png": "hole",
-        "residual1.png": "residual",
-        "iter2.png": "refined",
-        "final_zoom.png": "final",
     }
-    # keep a few non-stack decorative panels for RF/loss (still 3D-looking noise/mix)
-    for name, kind in mapping.items():
-        stack = _annotate_z_strip(_stack_for(kind, z_ids, hu_g, inp_g, nod, pred), z_ids)
-        _save(name, stack, size=280)
+    for name, kind in train_map.items():
+        _save(name, _stack_for(kind, z_tr_ids, hu_tr, inp_tr, nod_tr, pred_tr), size=280)
 
-    # RF training / velocity: stack of mixed noise+prior slices
-    rf_slices = []
-    vel_slices = []
     rng = np.random.default_rng(0)
-    for zi in z_ids:
-        healthy = inp_g[zi]
+    rf_slices, vel_slices = [], []
+    for zi in z_tr_ids:
+        healthy = inp_tr[zi]
         noise = np.clip(rng.normal(0.45, 0.22, size=healthy.shape).astype(np.float32), 0, 1)
         try:
             from scipy.ndimage import gaussian_filter
@@ -217,18 +218,44 @@ def main(case_index: int = 1370) -> None:
     _save("rf_training.png", _compose_stack(rf_slices), size=280)
     _save("velocity_loss.png", _compose_stack(vel_slices), size=280)
 
-    # also export individual slices for optional use
+    # Inference-row + mask-refinement assets (different case)
+    infer_map = {
+        "test_ct.png": "ct",
+        "box_prompt.png": "box",
+        "initial_hole.png": "hole",
+        "healthy_reconstruction.png": "recon",
+        "residual.png": "residual",
+        "threshold.png": "threshold",
+        "final_seg.png": "final",
+        "iter1.png": "hole",
+        "residual1.png": "residual",
+        "iter2.png": "refined",
+        "final_zoom.png": "final",
+    }
+    for name, kind in infer_map.items():
+        _save(name, _stack_for(kind, z_inf_ids, hu_inf, inp_inf, nod_inf, pred_inf), size=280)
+
     slice_dir = OUT / "slices"
     slice_dir.mkdir(exist_ok=True)
-    for kind in ("ct", "box", "hole", "recon", "residual", "final", "healthy"):
-        for zi in z_ids:
-            rgb = _render_panel_at_z(hu_g, inp_g, nod, pred, zi, kind)
+    for kind in ("ct", "box", "hole", "recon", "residual", "final"):
+        for zi in z_inf_ids:
+            rgb = _render_panel_at_z(hu_inf, inp_inf, nod_inf, pred_inf, zi, kind)
             arr = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
-            Image.fromarray(arr).resize((128, 128), Image.NEAREST).save(slice_dir / f"{kind}_z{zi}.png")
+            Image.fromarray(arr).resize((128, 128), Image.NEAREST).save(
+                slice_dir / f"{kind}_z{zi}.png"
+            )
+    for kind in ("healthy",):
+        for zi in z_tr_ids:
+            rgb = _render_panel_at_z(hu_tr, inp_tr, nod_tr, pred_tr, zi, kind)
+            arr = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
+            Image.fromarray(arr).resize((128, 128), Image.NEAREST).save(
+                slice_dir / f"{kind}_z{zi}.png"
+            )
 
     (OUT / "README.txt").write_text(
-        f"TikZ/matplotlib/draw.io assets from LIDC case #{int(st['sample_index'])}.\n"
-        f"Center slice z={z}; stack shows consecutive planes {z_ids} (3D 64³).\n"
+        "Method-overview assets (3 consecutive axial slices per panel).\n"
+        f"Training row: LIDC #{train_case} (z={z_tr}, stack {z_tr_ids}).\n"
+        f"Inference / refinement: LIDC #{infer_case} (z={z_inf}, stack {z_inf_ids}).\n"
         "Regenerate: nninteractive python figures/export_method_overview_tikz_assets.py\n"
     )
     print(f"Done → {OUT}")
