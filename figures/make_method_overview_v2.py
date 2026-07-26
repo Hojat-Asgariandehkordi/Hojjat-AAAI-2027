@@ -77,30 +77,41 @@ def _vline(ax, x, y0, y1, *, color=C_ARROW, lw=1.1):
 
 
 def _img_panel(ax, x, y, s, fname: str, caption: str, *, accent=C_INK, cap_y=None):
-    """Image frame + caption on a shared baseline (never drawn on the image)."""
-    _round(ax, x - 0.02, y - 0.02, s + 0.04, s + 0.04, "white", accent, lw=0.7, rs=0.02, z=3)
+    """Image frame + caption on a shared baseline (never drawn on the image).
+
+    ``s`` is the panel width; height follows the asset aspect (3-slice stacks are wider).
+    """
+    img = _load(fname)
+    ih, iw = img.shape[:2]
+    aspect = ih / max(iw, 1)
+    # fit inside a square budget of side s (prefer full width)
+    w = s
+    h = s * min(aspect, 1.05)
+    # vertically center within the square budget
+    y0 = y + (s - h) / 2
+    _round(ax, x - 0.02, y0 - 0.02, w + 0.04, h + 0.04, "white", accent, lw=0.7, rs=0.02, z=3)
     ax.imshow(
-        _load(fname),
-        extent=(x, x + s, y, y + s),
+        img,
+        extent=(x, x + w, y0, y0 + h),
         origin="upper",
         interpolation="nearest",
         zorder=4,
         aspect="auto",
     )
     ax.text(
-        x + s / 2,
+        x + w / 2,
         cap_y if cap_y is not None else (y - 0.16),
         caption,
         ha="center",
         va="center",
-        fontsize=6.6,
+        fontsize=6.4,
         fontweight="bold",
         color=C_INK,
         zorder=5,
         linespacing=1.05,
         clip_on=False,
     )
-    return x + s / 2, y + s / 2
+    return x + w / 2, y0 + h / 2
 
 
 def _proc_box(ax, x, y, w, h, text: str, *, fc=C_PANEL, ec=C_INK, tc=C_INK, fs=7.0):
@@ -140,11 +151,11 @@ def draw() -> None:
     cap_y_t = y_img_t - 0.18
 
     train_items = [
-        ("img", "healthy_patch.png", "Healthy CT patch"),
-        ("img", "noise_patch.png", "Noise"),
+        ("img", "healthy_patch.png", "Healthy 64³\n(3 slices)"),
+        ("img", "noise_patch.png", "Noise volume"),
         ("box", "3D Rectified\nFlow Network", dict(fc="#D9E8F2", ec=C_TRAIN, tc=C_TRAIN, w=1.75, h=0.78)),
         ("box", "Velocity Loss", dict(fc=C_PANEL, ec=C_INK, tc=C_INK, w=1.25, h=0.66)),
-        ("img", "learned_prior.png", "Learned healthy prior"),
+        ("img", "learned_prior.png", "Learned healthy\nprior (3D)"),
     ]
     widths = [s if k == "img" else b["w"] for k, a, b in train_items]
     gap_t = 0.30
@@ -216,7 +227,7 @@ def draw() -> None:
     cap_y_i = y_img_i - 0.17
 
     infer_items = [
-        ("img", "test_ct.png", "CT patch"),
+        ("img", "test_ct.png", "CT 64³\n(3 slices)"),
         ("img", "box_prompt.png", "Box prompt"),
         ("img", "initial_hole.png", "Initial hole"),
         (
