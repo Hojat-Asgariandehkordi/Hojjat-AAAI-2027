@@ -1,13 +1,14 @@
-% Method overview (training + inference with CT samples)
+% Method overview (camera-ready Draw.io export)
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{figures/fig_method_overview_2.pdf}
   \caption{Method overview.
-  Top: healthy-prior training via 3D rectified flow.
-  Bottom: box-prompted inpainting, residual thresholding, and \(R\)-round
-  mask refinement as a horizontal strip (red\,=\,GT, lime\,=\,prediction).
-  Panels show three consecutive axial slices of each \(64^{3}\) patch
-  (train LIDC \#1370; inference LIDC \#1183).}
+  \textbf{Top:} 3D rectified-flow training of a healthy CT prior.
+  \textbf{Middle:} box-prompted mask-guided inpainting, residual
+  \(|x-\hat{x}|\), and \(R\)-round refinement.
+  \textbf{Bottom:} mask-refinement stages
+  (red\,=\,GT, lime\,=\,prediction; 3 consecutive axial slices of \(64^{3}\)
+  patches; train LIDC \#1370, inference LIDC \#1183).}
   \label{fig:method}
 \end{figure*}
 
