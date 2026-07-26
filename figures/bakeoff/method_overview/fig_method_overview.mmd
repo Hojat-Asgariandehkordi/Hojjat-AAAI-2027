@@ -1,11 +1,27 @@
-%% Mermaid — method overview (preview in Cursor Markdown)
-%% Paper: region-prompted anomaly verification via healthy RF inpainting
-flowchart LR
-  A[CT patch + box prompt] --> B[Mask hole from boxes]
-  B --> C[Healthy RF inpainting]
-  C --> D[Residual |x - x̂|]
-  D --> E[Threshold + refine R]
-  E --> F[Anomaly mask ŷ]
+%% Mermaid — method overview (training offline + inference online)
+flowchart TB
+  subgraph TRAIN["TRAINING (offline)"]
+    direction TB
+    T1[Healthy CT Patch] --> T2[Random Noise]
+    T2 --> T3[Rectified Flow Training]
+    T3 --> T4[Velocity Loss]
+    T4 --> T5[Learned Healthy Prior]
+  end
 
-  style C fill:#0B3D5C,color:#fff,stroke:#111
-  style F fill:#047857,color:#fff,stroke:#111
+  subgraph INFER["INFERENCE (online)"]
+    direction TB
+    I1[CT Patch + Bounding Box] --> I2[Create Hole]
+    I2 --> I3[Mask-guided RF Inpainting]
+    I3 --> I4[Healthy Reconstruction]
+    I4 --> I5[Residual]
+    I5 --> I6[Threshold]
+    I6 --> I7[Refined Hole]
+    I7 -->|iterate R rounds| I3
+    I7 --> I8[Final Segmentation]
+  end
+
+  T5 -.->|use prior| I3
+
+  style T5 fill:#0B3D5C,color:#fff,stroke:#111
+  style I3 fill:#047857,color:#fff,stroke:#111
+  style I8 fill:#065F46,color:#fff,stroke:#111

@@ -1,25 +1,48 @@
-% TikZ — method overview (matches LaTeX paper fonts)
+% TikZ — method overview: TRAINING (offline) | INFERENCE (online)
 % Compile: pdflatex fig_method_overview.tikz.tex
-\documentclass[tikz,border=6pt]{standalone}
+\documentclass[tikz,border=8pt]{standalone}
 \usepackage{times}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,calc}
 \begin{document}
 \begin{tikzpicture}[
   font=\small\sffamily,
-  node distance=9mm and 11mm,
-  box/.style={draw=black!80, rounded corners=2pt, align=center,
-              inner sep=5pt, minimum height=11mm, fill=black!4},
-  ours/.style={box, fill=black!70, text=white},
-  out/.style={box, fill=teal!55!black, text=white},
-  arr/.style={-{Latex[length=2mm]}, thick, draw=black!60}
+  node distance=5.5mm,
+  box/.style={draw=black!75, rounded corners=2pt, align=center,
+              inner sep=4.5pt, minimum width=32mm, minimum height=9mm,
+              fill=black!3},
+  prior/.style={box, fill=black!72, text=white},
+  rf/.style={box, fill=teal!60!black, text=white},
+  out/.style={box, fill=teal!70!black, text=white},
+  banner/.style={align=center, font=\bfseries\small\sffamily,
+                 text=white, minimum width=38mm, minimum height=7mm,
+                 rounded corners=1.5pt},
+  arr/.style={-{Latex[length=2mm]}, thick, draw=black!55},
+  looparr/.style={-{Latex[length=2mm]}, thick, draw=orange!70!black},
+  priorarr/.style={-{Latex[length=2mm]}, thick, draw=black!60, dashed}
 ]
-\node[box] (A) {CT patch\\+ box prompt};
-\node[box, right=of A] (B) {Mask hole\\from boxes};
-\node[ours, right=of B] (C) {Healthy RF\\inpainting};
-\node[box, right=of C] (D) {Residual\\$|x-\hat x|$};
-\node[box, right=of D] (E) {Threshold\\+ refine $R$};
-\node[out, right=of E] (F) {Anomaly mask $\hat y$};
-\foreach \a/\b in {A/B,B/C,C/D,D/E,E/F} \draw[arr] (\a) -- (\b);
+% ---- Training ----
+\node[banner, fill=black!72] (tb) at (0,0) {TRAINING (offline)};
+\node[box, below=3mm of tb] (t1) {Healthy CT Patch};
+\node[box, below=of t1] (t2) {Random Noise};
+\node[box, below=of t2] (t3) {Rectified Flow Training};
+\node[box, below=of t3] (t4) {Velocity Loss};
+\node[prior, below=of t4] (t5) {Learned Healthy Prior};
+\foreach \a/\b in {t1/t2,t2/t3,t3/t4,t4/t5} \draw[arr] (\a) -- (\b);
+
+% ---- Inference ----
+\node[banner, fill=teal!60!black, right=28mm of tb] (ib) {INFERENCE (online)};
+\node[box, below=3mm of ib] (i1) {CT Patch + Bounding Box};
+\node[box, below=of i1] (i2) {Create Hole};
+\node[rf, below=of i2] (i3) {Mask-guided RF Inpainting};
+\node[box, below=of i3] (i4) {Healthy Reconstruction};
+\node[box, below=of i4] (i5) {Residual};
+\node[box, below=of i5] (i6) {Threshold};
+\node[box, below=of i6] (i7) {Refined Hole};
+\node[out, below=7mm of i7] (i8) {Final Segmentation};
+\foreach \a/\b in {i1/i2,i2/i3,i3/i4,i4/i5,i5/i6,i6/i7} \draw[arr] (\a) -- (\b);
+\draw[arr] (i7) -- (i8);
+\draw[looparr] (i7.west) -- ++(-6mm,0) |- node[left, font=\scriptsize\sffamily, text=orange!70!black, align=right] {iterate\\$R$ rounds} (i3.west);
+\draw[priorarr] (t5.east) to[out=0,in=180] node[above, font=\scriptsize\itshape, midway] {use prior} (i3.west);
 \end{tikzpicture}
 \end{document}

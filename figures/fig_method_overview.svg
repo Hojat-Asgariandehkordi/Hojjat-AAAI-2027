@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-07-25T18:25:15.847240</dc:date>
+    <dc:date>2026-07-26T09:26:35.992961</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -40,7 +40,7 @@ Q 12.573 44.030594 12.573 47.086594
 L 12.573 89.870594 
 Q 12.573 92.926594 15.777 92.926594 
 z
-" clip-path="url(#pb4e813b300)" style="fill: #f3f4f6; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#pb353b0bfd1)" style="fill: #f3f4f6; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 123.912 92.926594 
@@ -53,7 +53,7 @@ Q 120.708 44.030594 120.708 47.086594
 L 120.708 89.870594 
 Q 120.708 92.926594 123.912 92.926594 
 z
-" clip-path="url(#pb4e813b300)" style="fill: #dbeafe; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#pb353b0bfd1)" style="fill: #dbeafe; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 236.052 92.926594 
@@ -66,7 +66,7 @@ Q 232.848 44.030594 232.848 47.086594
 L 232.848 89.870594 
 Q 232.848 92.926594 236.052 92.926594 
 z
-" clip-path="url(#pb4e813b300)" style="fill: #e0f2fe; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#pb353b0bfd1)" style="fill: #e0f2fe; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 348.192 92.926594 
@@ -79,7 +79,7 @@ Q 344.988 44.030594 344.988 47.086594
 L 344.988 89.870594 
 Q 344.988 92.926594 348.192 92.926594 
 z
-" clip-path="url(#pb4e813b300)" style="fill: #fef3c7; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#pb353b0bfd1)" style="fill: #fef3c7; stroke: #1f2937; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="fill: #1f2937; font: 700 8px 'DejaVu Sans'" transform="translate(34.475 66.055)">CT patch</text>
@@ -142,7 +142,7 @@ L 388.89773 100.890971
   </g>
  </g>
  <defs>
-  <clipPath id="pb4e813b300">
+  <clipPath id="pb353b0bfd1">
    <rect x="2.16" y="14.998594" width="480.6" height="114.6"/>
   </clipPath>
  </defs>
