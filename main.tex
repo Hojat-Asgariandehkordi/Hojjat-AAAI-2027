@@ -128,7 +128,7 @@ box?'', it is naturally conservative on normal parenchyma.
     healthy lung patches; mask-guided inpainting from weak
     per-slice boxes; and iterative residual-based mask refinement
     that yields voxel-level pseudo-segmentations without lesion
-    masks during training.
+    masks during training (Figure~\ref{fig:method}).
 
 \item \textbf{Evaluation against interactive segmenters.}
     Under matched box prompts on LIDC-IDRI, we compare against
@@ -226,6 +226,24 @@ voxels that cannot be explained by healthy tissue leave a large reconstruction
 residual.
 By iteratively refining the inpaint region from this residual, we obtain a
 binary nodule mask without training a dedicated segmentation network.
+Figure~\ref{fig:method} summarizes the offline training of the healthy prior
+and the online box-prompted inference loop, with example CT slices from a
+LIDC patch.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_method_overview_2.pdf}
+  \caption{Method overview.
+  \textbf{Top:} training learns a 3D rectified-flow prior of healthy lung CT
+  from nodule-free patches.
+  \textbf{Bottom:} at inference a weak box prompt defines an initial hole;
+  mask-guided inpainting produces a healthy reconstruction, the residual
+  \(|x-\hat{x}|\) is thresholded to refine the hole, and the process is
+  iterated for \(R\) rounds to yield the final segmentation
+  (red\,=\,GT, lime\,=\,prediction).
+  Inset shows successive mask refinements on LIDC patch \#1370.}
+  \label{fig:method}
+\end{figure*}
 
 \paragraph{Notation.}
 Let \(\mathbf{x}\in\mathbb{R}^{D\times H\times W}\) denote a CT patch after HU
