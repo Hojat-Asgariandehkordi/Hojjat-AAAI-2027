@@ -49,6 +49,12 @@ MAISI_CASES = [50, 9, 86, 16]  # Dice ≈ 0.87 / 0.86 / 0.84 / 0.84 (compact)
 HEALTHY_CASES = [217, 1365, 1532, 2002]
 NSCLC_PATIENTS = ["LUNG1-024", "LUNG1-145", "LUNG1-098", "LUNG1-173"]  # Dice ≈ 0.90–0.89
 
+# Mild CT display (avoid harsh high-contrast black/white). LIDC caches are often
+# already clipped to ~[0, 400]; MAISI/NSCLC keep true HU.
+DISPLAY_GAMMA = 1.05
+DISPLAY_P_LO = 1.0
+DISPLAY_P_HI = 99.0
+
 # Built-in visualize script only auto-runs sam_med2d/segvol/vista3d; we add the rest.
 FM_KEYS_BUILTIN = ["sam_med2d", "segvol", "vista3d"]
 FM_KEYS_EXTRA = ["nninteractive", "sam_med3d"]
@@ -147,14 +153,41 @@ def save_fig(fig: plt.Figure, stem: str) -> None:
     plt.close(fig)
 
 
-def _gray(sl, hu_min, hu_max):
-    return np.clip((sl.astype(np.float32) - hu_min) / (hu_max - hu_min + 1e-8), 0, 1)
+def _display_limits(sl: np.ndarray):
+    """Pick a darker window from the slice (handles true HU and [0,400] caches)."""
+    x = np.asarray(sl, dtype=np.float32)
+    lo = float(np.percentile(x, DISPLAY_P_LO))
+    hi = float(np.percentile(x, DISPLAY_P_HI))
+    if hi <= lo + 1e-3:
+        lo, hi = float(x.min()), float(x.max() + 1e-3)
+    # Slight soft bias only (keep mid-gray parenchyma like typical CT panels).
+    hi = lo + 0.95 * (hi - lo)
+    return lo, hi
 
 
-def _contour(ax, m2d, color, lw=1.2):
-    if m2d is None or np.max(m2d) <= 0:
+def _gray(sl, hu_min=None, hu_max=None, gamma=None):
+    if hu_min is None or hu_max is None:
+        hu_min, hu_max = _display_limits(sl)
+    if gamma is None:
+        gamma = DISPLAY_GAMMA
+    g = np.clip((sl.astype(np.float32) - hu_min) / (hu_max - hu_min + 1e-8), 0, 1)
+    if gamma != 1.0:
+        g = np.power(g, float(gamma))
+    return g
+
+
+def _contour(ax, m2d, color, lw=1.2, linestyle="-"):
+    if m2d is None:
         return
-    ax.contour(np.asarray(m2d, dtype=float), levels=[0.5], colors=color, linewidths=lw)
+    arr = np.asarray(m2d, dtype=float)
+    if arr.ndim > 2:
+        arr = np.squeeze(arr)
+    if arr.size == 0 or float(np.nanmax(arr)) <= 0:
+        return
+    # Soft probs / masks are in [0, 1]; HU leftovers are ≫1 and must be ignored.
+    if float(np.nanmax(arr)) > 1.5:
+        return
+    ax.contour(arr, levels=[0.5], colors=color, linewidths=lw, linestyles=linestyle)
 
 
 def _style(ax, title=""):
@@ -199,15 +232,29 @@ def _safe_slice(vol, z):
 
 
 def _lookup_pred(st, key):
-    for bag in (getattr(st, "preds", None), getattr(st, "ours_inp", None)):
-        if not isinstance(bag, dict):
+    """Return a binary/soft mask for ``key``.
+
+    Prefer ``st.preds`` (masks). Never fall back to ``st.ours_inp`` — that bag
+    holds inpainted HU volumes, which produce empty contours at level 0.5.
+    """
+    preds = getattr(st, "preds", None)
+    if not isinstance(preds, dict):
+        return None
+    if key in preds and preds[key] is not None:
+        return preds[key]
+
+    key_n = str(key).replace(" ", "").lower()
+    # Accept aliases: "40s_r2" ↔ "ours:40s_r2", model display names, etc.
+    aliases = {key_n, key_n.replace("ours:", ""), f"ours:{key_n}" if not key_n.startswith("ours:") else key_n}
+    for k, v in preds.items():
+        if v is None:
             continue
-        if key in bag and bag[key] is not None:
-            return bag[key]
-        key_n = key.replace(" ", "").lower()
-        for k, v in bag.items():
-            if v is not None and str(k).replace(" ", "").lower() == key_n:
-                return v
+        kn = str(k).replace(" ", "").lower()
+        if kn in aliases or kn.replace("ours:", "") in aliases:
+            return v
+        # Fuzzy: "40s_r2" inside "ours:40s_r2" / display names
+        if key_n in kn or kn in key_n:
+            return v
     return None
 
 
@@ -268,29 +315,40 @@ def run_lidc_and_ablation(force: bool) -> None:
     logger = setup_logging("paper.qual.lidc")
     cfg = load_yaml_config(CNET / "configs/benchmark_test_foundation.yaml")
     stores = _collect_stores_lidc(cfg, logger, force=force)
-    hu_min, hu_max = float(cfg.get("hu_min", -1000)), float(cfg.get("hu_max", 400))
+    # Adaptive darker window per slice (None → _display_limits inside _gray).
+    hu_min, hu_max = None, None
 
-    # Prefer whatever keys run_qualitative actually wrote into CaseStore.ours_inp
+    # Prefer mask keys in st.preds (e.g. "ours:40s_r2"), not ours_inp HU keys.
     ours_present = []
     for st in stores:
-        bag = getattr(st, "ours_inp", None)
+        bag = getattr(st, "preds", None)
         if isinstance(bag, dict) and bag:
-            ours_present = list(bag.keys())
-            break
+            ours_present = [k for k in bag if "ours" in str(k).lower() or "s_r" in str(k).lower()]
+            if ours_present:
+                break
+    if not ours_present:
+        for st in stores:
+            bag = getattr(st, "ours_inp", None)
+            if isinstance(bag, dict) and bag:
+                ours_present = list(bag.keys())
+                break
     LOG.info("Ours keys on stores: %s", ours_present)
 
     def _match_ours(steps: int, rounds: int) -> str:
+        # Canonical cache key from visualize script
+        short = f"ours:{steps}s_r{rounds}"
+        if short in ours_present:
+            return short
         want = _ours_key(steps, rounds)
         if want in ours_present:
             return want
         for k in ours_present:
             kl = str(k).lower().replace(" ", "")
-            if f"{steps}-step" in str(k).lower() or f"{steps}step" in kl or f"{steps}s_r{rounds}" in kl:
-                if rounds == 2 and ("r=2" in str(k).lower() or "r2" in kl or "_r2" in kl):
-                    return k
-                if rounds != 2 and "r=2" not in str(k).lower() and "_r2" not in kl:
-                    return k
-        return want
+            if f"{steps}s_r{rounds}" in kl or (f"{steps}-step" in str(k).lower() and f"r={rounds}" in str(k).lower()):
+                return k
+            if f"{steps}s_r{rounds}" in kl.replace("ours:", ""):
+                return k
+        return short
 
     # Main LIDC
     ours_k = _match_ours(40, 2)
@@ -418,10 +476,12 @@ def _draw_paper_grid(stores, col_keys, col_labels, stem, title, hu_min, hu_max, 
         for c, key in enumerate(col_keys):
             ax = axes[r, c]
             ax.imshow(gray, cmap="gray", vmin=0, vmax=1)
-            if show_gt_on_all:
-                _contour(ax, _safe_slice(st.nodule, st.z), "red", 1.25)
+            # Draw prediction first (thicker lime), then GT (red) so tight
+            # Ours–GT overlap still shows both colors.
             if key != "gt":
-                _contour(ax, _safe_slice(_lookup_pred(st, key), st.z), "lime", 1.05)
+                _contour(ax, _safe_slice(_lookup_pred(st, key), st.z), "lime", 1.45)
+            if show_gt_on_all:
+                _contour(ax, _safe_slice(st.nodule, st.z), "red", 1.15)
             _style(ax, col_labels.get(key, key) if r == 0 else "")
             if c == 0:
                 ax.set_ylabel(f"#{st.sample_index}", fontweight="bold", fontsize=9)
@@ -484,13 +544,18 @@ def run_maisi(force: bool) -> None:
         except Exception as exc:  # noqa: BLE001
             LOG.warning("Could not pickle MAISI stores (%s)", exc)
 
-    hu_min, hu_max = float(cfg.get("hu_min", -1000)), float(cfg.get("hu_max", 400))
-    ours_k = _ours_key(60, 3)
+    hu_min, hu_max = None, None  # adaptive darker window
+    # Prefer preds mask key (ours:60s_r3), not ours_inp HU key (60s_r3).
+    ours_k = "ours:60s_r3"
     for st in stores:
-        bag = getattr(st, "ours_inp", None)
-        if isinstance(bag, dict) and bag:
-            ours_k = next(iter(bag.keys()))
-            break
+        bag = getattr(st, "preds", None)
+        if isinstance(bag, dict):
+            for k in bag:
+                if "60s_r3" in str(k).lower() or "60-step" in str(k).lower():
+                    ours_k = k
+                    break
+            if ours_k in bag:
+                break
     col_keys = ["gt"] + FM_KEYS + [ours_k]
     col_labels = {
         "gt": "GT",
@@ -631,11 +696,10 @@ def run_nsclc() -> None:
         sl = np.take(ct, z, axis=slice_axis)
         g2 = np.take(gt, z, axis=slice_axis)
         # orient: show with origin upper like axial CT
-        gray = _gray(sl, -1000, 400)
+        gray = _gray(sl)  # adaptive darker window
         for c, (title, folder) in enumerate(methods):
             ax = axes[r, c]
             ax.imshow(np.rot90(gray), cmap="gray", vmin=0, vmax=1)
-            _contour(ax, np.rot90(g2), "red", 1.2)
             if folder is not None:
                 pred = np.asanyarray(nib.load(str(base / folder / f"{pid}.nii.gz")).dataobj) > 0.5
                 if pred.shape != gt.shape:
@@ -643,7 +707,8 @@ def run_nsclc() -> None:
                     if pred.T.shape == gt.shape:
                         pred = pred.T
                 p2 = np.take(pred, z, axis=slice_axis)
-                _contour(ax, np.rot90(p2), "lime", 1.0)
+                _contour(ax, np.rot90(p2), "lime", 1.45)
+            _contour(ax, np.rot90(g2), "red", 1.15)
             _style(ax, title if r == 0 else "")
             if c == 0:
                 ax.set_ylabel(pid, fontweight="bold", fontsize=8)
