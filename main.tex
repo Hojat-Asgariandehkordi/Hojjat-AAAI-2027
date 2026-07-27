@@ -29,10 +29,6 @@
 \usepackage{multirow}
 
 % ── Convenience macros ────────────────────────────────────────
-\newcommand{\mt}{m_t}
-\newcommand{\xhat}{\hat{x}_0}
-\newcommand{\rt}{r_t}
-\newcommand{\phealthy}{p_\phi(y\!=\!\text{healthy}\mid x_t,t)}
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
 
 \pdfinfo{/TemplateVersion (2027.1)}
@@ -85,7 +81,7 @@ weak, but it also appears whenever a box is placed on healthy tissue.
 
 We therefore reframe the task as \emph{region-prompted anomaly
 verification} rather than generic interactive segmentation. We learn a
-3D rectified-flow prior of \emph{healthy} lung CT from nodule-free
+3D rectified-flow~\citep{liu2023flow} prior of \emph{healthy} lung CT from nodule-free
 patches only. At inference, the prompted region is treated as a hole
 and filled with plausible normal tissue via RePaint-style~\citep{lugmayr2022repaint}
 mask-guided sampling. The residual between the observation and this
@@ -190,15 +186,15 @@ rate matters.
 \label{sec:method}
 %==============================================================================
 
-We formulate lung-nodule localization as \emph{anomaly-aware generative
-inpainting}.
+We formulate region-prompted lung-nodule localization as healthy-prior
+inpainting with residual readout.
 A 3D generative model is trained exclusively on \emph{healthy} lung tissue,
 thereby encoding a prior over normal CT appearance.
 At test time, a candidate region is erased and reconstructed under that prior;
 voxels that cannot be explained by healthy tissue leave a large reconstruction
 residual.
 By iteratively refining the inpaint region from this residual, we obtain a
-binary nodule mask without training a dedicated segmentation network.
+binary nodule mask without training a discriminative segmenter on lesion masks.
 Figure~\ref{fig:method} summarizes the offline training of the healthy prior
 and the online box-prompted inference loop, illustrated with consecutive
 axial slices from LIDC \(64^{3}\) patches.
@@ -223,7 +219,8 @@ axial slices from LIDC \(64^{3}\) patches.
 Let \(\mathbf{x}\in\mathbb{R}^{D\times H\times W}\) denote a CT patch after HU
 windowing and normalization (Sec.~\ref{sec:method:data}).
 Let \(\mathbf{y}\in\{0,1\}^{D\times H\times W}\) be the ground-truth nodule mask
-(used only to construct the \emph{initial} prompt and for evaluation).
+(used to construct oracle box prompts for fair comparison, and for evaluation
+only; deployment can use detector or user boxes).
 We write \(\mathbf{m}\in\{0,1\}^{D\times H\times W}\) for the \emph{keep} mask
 (\(\mathbf{m}=1\) known~/~observed, \(\mathbf{m}=0\) inpaint hole) and
 \(\mathbf{h}=1-\mathbf{m}\) for the hole.
@@ -234,8 +231,9 @@ The network \(v_\theta\) predicts a rectified-flow velocity field.
 \label{sec:method:problem}
 %------------------------------------------------------------------------------
 
-Given a thoracic CT patch containing a candidate nodule, the goal is to
-recover a binary segmentation \(\hat{\mathbf{y}}\) of the lesion.
+Given a thoracic CT patch and a candidate region prompt, the goal is to
+recover a binary segmentation \(\hat{\mathbf{y}}\) of any lesion in that region
+(or an empty mask if the region is healthy).
 Conventional discriminative segmenters map \(\mathbf{x}\mapsto\hat{\mathbf{y}}\)
 directly.
 In contrast, we leverage the observation that nodules are \emph{deviations from
@@ -260,14 +258,15 @@ least \(25\%\) of the patch.
 Intensities are clipped to \([-1000,400]\,\mathrm{HU}\) and linearly mapped to
 \([0,1]\):
 \begin{equation}
+\begin{aligned}
 \tilde{x}
-=
-\mathrm{clip}\!\Biggl(
-\frac{x - \mathrm{HU}_{\min}}{\mathrm{HU}_{\max}-\mathrm{HU}_{\min}},\,0,1
-\Biggr),
-\quad\\
-\mathrm{HU}_{\min}=-1000,\;
+&=
+\mathrm{clip}\!\Bigl(
+\tfrac{x - \mathrm{HU}_{\min}}{\mathrm{HU}_{\max}-\mathrm{HU}_{\min}},\,0,1
+\Bigr),\\
+\mathrm{HU}_{\min}&=-1000,\qquad
 \mathrm{HU}_{\max}=400.
+\end{aligned}
 \end{equation}
 Training uses \emph{nodule-free} (healthy) patches; inference and evaluation use
 \emph{positive} nodule patches with LIDC consensus annotations.
@@ -318,35 +317,33 @@ v_\theta(\mathbf{x}_t,t)
 \bigr\|_1
 \Biggr].
 \end{equation}
-Volumes are standardized by a per-batch scale factor
-\(s=1/\mathrm{std}(\mathbf{x}_0)\) before the flow path is applied, and rescaled at the end of
-sampling.
+Volumes are standardized by a fixed scale factor
+\(s=1/\mathrm{std}(\mathbf{x})\) estimated once from training data (MAISI-style)
+and reused for training and inference; outputs are rescaled after sampling.
 
-\paragraph{Architecture and optimization.}
-The U-Net has four resolution levels with channels
-\([64,128,128,128]\), two residual blocks per level, and attention at the
-bottleneck (\texttt{num\_head\_channels}\({=}16\)).
-Inputs and outputs are single-channel.
-We use Adam with learning rate \(10^{-4}\), gradient clipping at \(1.0\),
-bfloat16 mixed precision, and medium spatial~/~intensity augmentations
-(random flips; intensity shift \(\pm 0.05\) and scale \(\pm 0.10\) in
-normalized space).
-No lesion masks or ControlNet-style conditioning are used during training: the prior is a pure
-healthy-tissue generator.
+\paragraph{Network and training regime.}
+The velocity field is a compact single-channel 3D U-Net over \(64^{3}\)
+patches: capacity is spent on local parenchyma texture rather than
+long-range attention, and spatial self-attention is disabled.
+Crucially, training is \emph{unconditional}: no boxes, lesion masks, or
+ControlNet-style side inputs are provided, so \(v_\theta\) learns only
+what healthy lung looks like.
+Mild flips and intensity jitter regularize the prior without introducing
+lesion-like contrast that would contaminate residual scoring at inference.
+Full channel widths and optimizer settings are listed in
+Table~\ref{tab:hparams}.
 
 %------------------------------------------------------------------------------
 \subsection{Mask-Guided Rectified-Flow Inpainting}
 \label{sec:method:repaint}
 %------------------------------------------------------------------------------
 
-At inference we perform RePaint-style~\cite{lugmayr2022repaint} known-region
-injection under the rectified-flow ODE, without jump resampling.
-
-Given keep-mask \(\mathbf{m}\) and observation \(\mathbf{x}_0\), sampling starts
-from \(\mathbf{x}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\) in scaled space and
-follows an \(N\)-step Euler discretization of the learned velocity
-(\(N{=}40\) in our default setting).
-At each time \(t\), known voxels are overwritten by a noised copy of the
+Given keep-mask \(\mathbf{m}\) and observation \(\mathbf{x}_0\), we sample
+an \(N\)-step Euler discretization of the learned velocity ODE
+(\(N{=}40\) by default), starting from
+\(\mathbf{x}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\) in scaled space.
+Following RePaint~\cite{lugmayr2022repaint}, but without jump resampling,
+known voxels are overwritten at each time \(t\) by a noised copy of the
 observation while unknown voxels evolve freely:
 \begin{equation}
 \label{eq:inject}
@@ -380,7 +377,7 @@ and synthesized from the healthy prior inside the hole.
 Prompted methods require a spatial query.
 Following standard interactive segmentation practice, we construct an
 \emph{initial} hole from per-slice axis-aligned boxes of the nodule annotation
-(or, at deployment, of a coarse detector / user scribbles).
+(or, at deployment, of a coarse detector or user boxes).
 For each axial slice \(z\) containing foreground,
 \begin{equation}
 \mathbf{h}^{(0)}_z
@@ -388,7 +385,7 @@ For each axial slice \(z\) containing foreground,
 \mathrm{AABB}_{2\mathrm{D}}\!\bigl(\mathbf{y}_z\bigr)
 \oplus\, p,
 \end{equation}
-with padding \(p{=}1\) voxel, stacked over \(z\) into a 3D binary hole
+with padding \(p{=}2\) voxels, stacked over \(z\) into a 3D binary hole
 \(\mathbf{h}^{(0)}\).
 This deliberately over-covers the lesion and provides a conservative starting
 region for refinement.
@@ -422,8 +419,8 @@ the previous hole:
 \;\odot\;
 \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr),
 \end{equation}
-with residual threshold \(\tau{=}0.05\) and 3D dilation radius \(\rho{=}3\).
-If the resulting mask contains fewer than \(\eta{=}10\) voxels, we retain
+with residual threshold \(\tau{=}0.05\) and 3D dilation radius \(\rho{=}2\).
+If the resulting mask contains fewer than \(\eta{=}8\) voxels, we retain
 \(\mathbf{h}^{(r)}\) (stability safeguard).
 We run \(R\) refinement rounds (\(R{=}2\) in our best configuration;
 \(R{=}3\) in ablations), performing \(R{+}1\) inpaint passes in total.
@@ -465,8 +462,9 @@ Eq.~\eqref{eq:inject}, each iterate becomes progressively more selective.
 \label{sec:method:discuss}
 %------------------------------------------------------------------------------
 
-Discriminative segmenters and foundation models (e.g., SAM-Med2D) map prompts
-to masks in a single feed-forward pass.
+Discriminative segmenters and foundation models (e.g.,
+SAM-Med2D~\citep{sam_med2d2023}) map prompts to masks in a single feed-forward
+pass.
 Our method instead \emph{tests} a spatial hypothesis against a generative
 healthy prior and updates the hypothesis via reconstruction error.
 The same initial boxes used to prompt interactive models initialize our hole;
@@ -481,13 +479,14 @@ healthy tissue is abundant but curated lesion masks are scarce.
 %------------------------------------------------------------------------------
 
 Unless noted otherwise we use \(N{=}40\) RF inference steps, \(R{=}2\)
-refinement rounds, \(\tau{=}0.05\), \(\rho{=}3\), and \(p{=}1\).
+refinement rounds, \(\tau{=}0.05\), \(\rho{=}2\), and \(p{=}2\).
 Checkpoints are selected by validation velocity loss on held-out healthy
 patches.
 All experiments share the same HU normalization and \(64^{3}\) geometry as
 training.
-We report Dice, IoU, precision, and recall between \(\hat{\mathbf{y}}\) and
-LIDC nodule masks on a held-out positive-patch test set.
+We report mean Dice and IoU between \(\hat{\mathbf{y}}\) and LIDC nodule
+masks on a held-out positive-patch test set (precision/recall are computed
+but not tabulated).
 
 Ablations over \(N\in\{30,40,60,80\}\) and \(R\in\{2,3\}\) are reported in
 Section~\ref{sec:experiments}; the default LIDC operating point uses
@@ -516,8 +515,9 @@ Learning rate & \(10^{-4}\) \\
 Inference steps \(N\) & \(40\) \\
 Refine rounds \(R\) & \(2\) \\
 Residual threshold \(\tau\) & \(0.05\) \\
-Search dilation \(\rho\) & \(3\) \\
-Box padding \(p\) & \(1\) voxel \\
+Search dilation \(\rho\) & \(2\) \\
+Box padding \(p\) & \(2\) voxels \\
+Min.\ hole voxels \(\eta\) & \(8\) \\
 Morphology & off \\
 \bottomrule
 \end{tabular}
@@ -545,15 +545,17 @@ Radiologist consensus masks are used \emph{only for evaluation}.
 
 \paragraph{Additional positive sets.}
 Under the same matched-box protocol we also evaluate
-MAISI synthetic nodule patches~\citep{maisi2025} (\(N{=}109\)) and
-NSCLC-Radiomics GTV volumes~\citep{aerts2014nsclc} (\(N{=}85\)).
+MAISI synthetic nodule patches~\citep{maisi2025} (\(N{=}109\) patches) and
+NSCLC-Radiomics~\citep{aerts2014nsclc} (\(N{=}85\) full GTV volumes,
+inferred by overlapping \(64^{3}\) tiles that are stitched back to the volume;
+qualitative figures additionally show matched \(64^{3}\) crops).
 All methods use the same prompts and the same pretrained healthy-prior
 checkpoint for Ours; only RF inference settings (steps / refine rounds \(R\))
 are dataset-specific, as noted in Table~\ref{tab:cross}.
 
 \paragraph{Prompting.}
 All methods receive identical per-slice 2D bounding boxes derived from the
-nodule / GTV mask with \(1\)-voxel padding (our ``Strategy-4'' box cue).
+nodule / GTV mask with \(2\)-voxel padding (our ``Strategy-4'' box cue).
 Ours converts these boxes into an inpainting hole; interactive baselines
 consume them as box prompts.
 
@@ -578,8 +580,9 @@ cross-dataset tables note any alternate settings used for reporting.
 \subsection{Main Results on LIDC}
 Table~\ref{tab:main} reports mean Dice / IoU under matched prompts.
 Ours is nearly tied with the strongest interactive baseline
-(SAM-Med2D; Dice \(0.73\) for both) and ahead of nnInteractive,
-SAM-Med3D, SegVol, and VISTA3D, despite never training on lesion masks.
+(SAM-Med2D; both round to Dice \(0.73\), with SAM-Med2D slightly ahead before
+rounding) and ahead of nnInteractive, SAM-Med3D, SegVol, and VISTA3D, despite
+never training on lesion masks.
 Figure~\ref{fig:results} summarizes the same comparison alongside
 the healthy FP probe.
 
@@ -595,7 +598,8 @@ Method & Prompt & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 SAM-Med2D       & Box & \textbf{0.73} & \textbf{0.60} \\
 \textbf{Ours (40-step, \(R{=}2\))}
                 & Box & \textbf{0.73} & 0.59 \\
-Ours (40-step)  & Box & 0.72 & 0.59 \\
+Ours (40-step, \(R{=}3\))
+                & Box & 0.72 & 0.59 \\
 nnInteractive   & Box & 0.71 & 0.58 \\
 SAM-Med3D       & Box & 0.54 & 0.40 \\
 SegVol          & Box & 0.37 & 0.25 \\
@@ -681,15 +685,14 @@ true nodules (Table~\ref{tab:main}).}
 \end{figure}
 
 \paragraph{Takeaway.}
-Interactive segmenters optimize ``objectness in the box'' and
-therefore over-segment healthy parenchyma. A healthy generative
-prior is naturally more conservative: competitive Dice when an
-anomaly is present, and markedly less spurious mass when it is
-not---the central empirical claim of this paper.
-Figure~\ref{fig:qual-fp} makes this concrete: under empty-GT random
-boxes, SAM-Med2D / SAM-Med3D / SegVol often paint lime masks inside
-the prompt, whereas Ours remains sparse
+Interactive segmenters optimize objectness inside the box and often
+over-segment healthy parenchyma under this probe. Under the same prompts,
+the healthy-prior model is more conservative: competitive Dice when an
+anomaly is present, and less spurious predicted volume when it is not
 (Table~\ref{tab:healthy_fp}).
+Figure~\ref{fig:qual-fp} illustrates empty-GT random boxes where
+SAM-Med2D / SAM-Med3D / SegVol often paint lime masks inside the prompt,
+whereas Ours remains sparse.
 
 \begin{figure*}[t]
   \centering
@@ -707,7 +710,8 @@ report mean Dice under the same matched-box protocol on
 MAISI~\citep{maisi2025} and NSCLC-Radiomics~\citep{aerts2014nsclc},
 with LIDC repeated for reference. Ours remains in a competitive tier on
 all three sets (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step,
-\(R{=}1\)): tied with nnInteractive on MAISI (\(0.71\)) and within
+\(R{=}1\)): within rounding of nnInteractive on MAISI (both \(0.71\) at
+two decimals; nnInteractive slightly higher before rounding) and within
 \(0.01\) Dice of the best NSCLC entry (\(0.78\) vs.\ \(0.79\)).
 Figure~\ref{fig:qual-cross} shows corresponding overlays on MAISI
 synthetic nodules and matched NSCLC \(64^3\) tumor patches;
@@ -783,11 +787,11 @@ VISTA3D       & 0.19 & 0.45 & 0.12 \\
 Table~\ref{tab:ablation} and Figure~\ref{fig:ablation} vary
 inference steps and refine rounds \(R\) on the LIDC positive set
 (same checkpoint). Moderate compute (\(40\) steps, \(R{=}2\)) is
-sufficient for near-peak Dice; additional steps yield diminishing
-returns. Figure~\ref{fig:qual-ablation} shows the corresponding
-overlays: coarse \(30\)-step residuals clean up by
-\(40\)-step/\(R{=}2\), after which contours stay visually
-stable---consistent with the flat Dice curve.
+sufficient for near-peak Dice; several \(R{=}3\) settings underperform the main \(R{=}2\) operating point,
+and \(80\)-step/\(R{=}2\) also does not beat it.
+Figure~\ref{fig:qual-ablation} shows the corresponding overlays: coarse
+\(30\)-step residuals clean up by \(40\)-step/\(R{=}2\), after which
+contours stay visually stable---consistent with the flat Dice curve.
 
 \begin{table}[t]
 \centering
@@ -798,10 +802,10 @@ positive test (\(N{=}1658\)).}
 \toprule
 Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 \midrule
-30-step (refine on) & 0.72 & 0.58 \\
-40-step (refine on) & 0.72 & 0.59 \\
+30-step, \(R{=}3\) & 0.72 & 0.58 \\
+40-step, \(R{=}3\) & 0.72 & 0.59 \\
 \textbf{40-step, \(R{=}2\)} & \textbf{0.73} & \textbf{0.59} \\
-60-step (refine on) & 0.72 & 0.58 \\
+60-step, \(R{=}3\) & 0.72 & 0.58 \\
 80-step, \(R{=}2\) & 0.72 & 0.59 \\
 \bottomrule
 \end{tabular}
@@ -858,8 +862,8 @@ object segmentation when false positives are costly.
 We study \emph{region-prompted} lung CT: a candidate box is already
 available, and the system must verify whether that region contains
 abnormal tissue and localize it. Within this setting the method does not require lesion-type labels at
-training time: solid, part-solid, and ground-glass findings are handled by
-the same healthy-prior residual whenever they deviate from normal parenchyma.
+training time; any localized finding that deviates from normal parenchyma can
+produce a residual (we do not report subtype-stratified Dice).
 The framework applies wherever (i)~weak box or slice-wise prompts
 exist and (ii)~a corpus of nodule-free lung patches can be curated
 to learn the healthy prior. Broader organs and modalities are a
