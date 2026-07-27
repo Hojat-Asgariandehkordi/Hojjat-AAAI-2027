@@ -341,27 +341,27 @@ Table~\ref{tab:hparams}.
 Given keep-mask \(\mathbf{m}\) and observation \(\mathbf{x}_0\), we sample
 an \(N\)-step Euler discretization of the learned velocity ODE
 (\(N{=}40\) by default), starting from
-\(\mathbf{x}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\) in scaled space.
+\(\mathbf{x}_t\sim\mathcal{N}(\mathbf{0},\mathbf{I})\) in scaled space.
 Following RePaint~\cite{lugmayr2022repaint}, but without jump resampling,
 known voxels are overwritten at each time \(t\) by a noised copy of the
 observation while unknown voxels evolve freely:
 \begin{equation}
 \label{eq:inject}
-\mathbf{x}
+\mathbf{x}_t
 \;\leftarrow\;
 \mathbf{m}\odot \tilde{\mathbf{x}}_t(\mathbf{x}_0)
 \;+\;
-(1-\mathbf{m})\odot \mathbf{x},
+(1-\mathbf{m})\odot \mathbf{x}_t,
 \end{equation}
 where \(\tilde{\mathbf{x}}_t(\mathbf{x}_0)\) denotes the rectified-flow
 forward perturbation of \(\mathbf{x}_0\) at time \(t\).
 A network step then updates
 \begin{equation}
-\mathbf{x}
+\mathbf{x}_t
 \;\leftarrow\;
-\mathbf{x}
+\mathbf{x}_t
 +
-v_\theta(\mathbf{x},t)\,\Delta t,
+v_\theta(\mathbf{x}_t,t)\,\Delta t,
 \qquad
 \Delta t=\frac{t-t_{\mathrm{next}}}{T}.
 \end{equation}
