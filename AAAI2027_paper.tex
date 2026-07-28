@@ -50,6 +50,7 @@
 \newcommand{\suppTabAblation}{Table~S2}
 \newcommand{\suppFigAblation}{Figure~S6}
 \newcommand{\suppFigQualAblation}{Figure~S7}
+\newcommand{\suppAlgRefine}{Algorithm~S1}
 
 \pdfinfo{/TemplateVersion (2027.1)}
 
@@ -548,7 +549,7 @@ region for refinement.
 A fixed initial hole is imperfect: it may include healthy soft tissue or miss
 irregular lesion boundaries.
 We therefore iterate inpainting and residual thresholding
-(Algorithm~\ref{alg:refine}).
+(\suppAlgRefine{} in the Supplementary Material).
 
 After inpainting with keep-mask \(\mathbf{m}^{(r)}=1-\mathbf{h}^{(r)}\),
 \begin{equation}
@@ -585,45 +586,13 @@ with \(\tau{=}0.05\), dilation radius \(\rho{=}2\), and stability floor
 We run \(R\) refinement updates (\(R{=}2\) by default; \(R{=}3\) in
 ablations) and therefore \(R{+}1\) inpaint passes: the final prediction is
 the hole used for the last inpaint, \(\hat{\mathbf{y}}=\mathbf{h}^{(R)}\)
-(Algorithm~\ref{alg:refine}).
-\begin{algorithm}[t]
-\caption{Iterative residual mask refinement for nodule localization}
-\label{alg:refine}
-\begin{algorithmic}[1]
-\REQUIRE CT patch $\mathbf{x}_0$, initial hole $\mathbf{h}^{(0)}$, RF
-inpainter $\mathcal{G}_\theta$, rounds $R$, threshold $\tau$, dilation
-$\rho$, min.\ voxels $\eta$
-\ENSURE Predicted nodule mask $\hat{\mathbf{y}}=\mathbf{h}^{(R)}$
-\FOR{$r = 0$ \TO $R$}
-\STATE $\mathbf{m}^{(r)} \gets 1-\mathbf{h}^{(r)}$
-\STATE $\hat{\mathbf{x}}^{(r)} \gets \mathcal{G}_\theta\!\bigl(
-  \mathbf{x}_0,\,\mathbf{m}^{(r)}\bigr)$
-  \COMMENT{Eqs.~\eqref{eq:inject},~\eqref{eq:sampler}}
-\IF{$r = R$}
-\STATE \textbf{break}
-  \COMMENT{final inpaint; no further update}
-\ENDIF
-\STATE $\mathbf{d}^{(r)} \gets \bigl|\mathbf{x}_0-\hat{\mathbf{x}}^{(r)}\bigr|$
-  \COMMENT{Eq.~\eqref{eq:residual}}
-\STATE $\mathbf{b}^{(r)} \gets \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr)$
-\STATE $\mathbf{h}' \gets \mathbb{1}\!\bigl[\mathbf{d}^{(r)}>\tau\bigr]
-  \odot \mathbf{b}^{(r)}$
-  \COMMENT{Eq.~\eqref{eq:update}}
-\IF{$\|\mathbf{h}'\|_0 \ge \eta$}
-\STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}'$
-\ELSE
-\STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}^{(r)}$
-  \COMMENT{stability safeguard}
-\ENDIF
-\ENDFOR
-\STATE \textbf{return} $\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}$
-\end{algorithmic}
-\end{algorithm}
-
+(\suppAlgRefine{}).
+No morphological open~/~close post-processing is applied in the default method.
 The loop couples a geometric box prior with an appearance test against the
 healthy flow:~\eqref{eq:inject}--\eqref{eq:sampler} keep each inpaint
 anchored to observed context, while~\eqref{eq:update} shrinks over-complete
-holes toward residual-supported lesion voxels.
+holes toward residual-supported lesion voxels; the full procedure is
+listed as \suppAlgRefine{} in the Supplementary Material.
 
 %------------------------------------------------------------------------------
 \subsection{Relation to Discriminative and Promptable Segmenters}

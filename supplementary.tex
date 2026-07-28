@@ -37,6 +37,7 @@
 % Supplementary numbering
 \renewcommand{\thefigure}{S\arabic{figure}}
 \renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thealgorithm}{S\arabic{algorithm}}
 \renewcommand{\thesection}{S\arabic{section}}
 
 \pdfinfo{/TemplateVersion (2027.1)}
@@ -57,15 +58,55 @@
 \begin{document}
 \maketitle
 
-This supplementary document provides default hyperparameters, additional
-qualitative and cross-dataset figures, and the inference-step~/~refine-round
-ablation referenced in the main paper.
+This supplementary document provides the iterative refinement algorithm,
+default hyperparameters, additional qualitative and cross-dataset figures,
+and the inference-step~/~refine-round ablation referenced in the main paper.
 For convenience we summarize the mapping used in the main text:
+Algorithm~S1 (residual mask refinement),
 Table~S1 (hyperparameters),
 Figure~S1 (healthy-FP qualitative),
 Figures~S2--S3 (cross-dataset Dice bars),
 Figures~S4--S5 (MAISI~/~NSCLC qualitative),
 Table~S2 and Figures~S6--S7 (ablation).
+
+\section{Iterative Residual Mask Refinement}
+\label{sec:supp:alg}
+Algorithm~\ref{alg:refine} summarizes the residual-driven refine loop used
+at inference (Eqs.~\eqref{eq:inject}--\eqref{eq:update} in the main paper).
+
+\begin{algorithm}[t]
+\caption{Iterative residual mask refinement for nodule localization}
+\label{alg:refine}
+\begin{algorithmic}[1]
+\REQUIRE CT patch $\mathbf{x}_0$, initial hole $\mathbf{h}^{(0)}$, RF
+inpainter $\mathcal{G}_\theta$, rounds $R$, threshold $\tau$, dilation
+$\rho$, min.\ voxels $\eta$
+\ENSURE Predicted nodule mask $\hat{\mathbf{y}}=\mathbf{h}^{(R)}$
+\FOR{$r = 0$ \TO $R$}
+\STATE $\mathbf{m}^{(r)} \gets 1-\mathbf{h}^{(r)}$
+\STATE $\hat{\mathbf{x}}^{(r)} \gets \mathcal{G}_\theta\!\bigl(
+  \mathbf{x}_0,\,\mathbf{m}^{(r)}\bigr)$
+  \COMMENT{Eqs.~\eqref{eq:inject},~\eqref{eq:sampler}}
+\IF{$r = R$}
+\STATE \textbf{break}
+  \COMMENT{final inpaint; no further update}
+\ENDIF
+\STATE $\mathbf{d}^{(r)} \gets \bigl|\mathbf{x}_0-\hat{\mathbf{x}}^{(r)}\bigr|$
+  \COMMENT{Eq.~\eqref{eq:residual}}
+\STATE $\mathbf{b}^{(r)} \gets \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr)$
+\STATE $\mathbf{h}' \gets \mathbb{1}\!\bigl[\mathbf{d}^{(r)}>\tau\bigr]
+  \odot \mathbf{b}^{(r)}$
+  \COMMENT{Eq.~\eqref{eq:update}}
+\IF{$\|\mathbf{h}'\|_0 \ge \eta$}
+\STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}'$
+\ELSE
+\STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}^{(r)}$
+  \COMMENT{stability safeguard}
+\ENDIF
+\ENDFOR
+\STATE \textbf{return} $\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}$
+\end{algorithmic}
+\end{algorithm}
 
 \section{Default Hyperparameters}
 \begin{table}[h]
