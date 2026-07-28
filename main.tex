@@ -32,13 +32,10 @@
 % ── Theorems (methodology) ────────────────────────────────────
 \newtheorem{proposition}{Proposition}
 \newtheorem{corollary}{Corollary}
-\theoremstyle{definition}
-\newtheorem{assumption}{Assumption}
 
 % ── Convenience macros ────────────────────────────────────────
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
 \newcommand{\norm}[1]{\left\|#1\right\|}
-\newcommand{\1}{\mathbb{1}}
 
 \pdfinfo{/TemplateVersion (2027.1)}
 
@@ -302,7 +299,7 @@ timesteps and timestep transform~\cite{esser2024sd3}), and write
 \(s\coloneqq t/T\in[0,1]\) for normalized time.
 Pair a healthy patch \(\mathbf{x}_0\sim p_{\mathrm{healthy}}\) with
 \(\boldsymbol{\varepsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\) and form the
-\emph{linear interpolant}
+\emph{linear interpolant} with constant target velocity
 \begin{equation}
 \label{eq:path}
 \mathbf{x}_t
@@ -311,41 +308,25 @@ Pair a healthy patch \(\mathbf{x}_0\sim p_{\mathrm{healthy}}\) with
 +
 s\,\boldsymbol{\varepsilon},
 \qquad
-s=\tfrac{t}{T}.
-\end{equation}
-Differentiating~\eqref{eq:path} w.r.t.\ \(s\) gives a constant target velocity
-\begin{equation}
-\label{eq:velocity}
-\mathbf{u}(\mathbf{x}_t,t)
+\mathbf{u}
 \;\coloneqq\;
 \frac{\mathrm{d}\mathbf{x}_t}{\mathrm{d}s}
 =
-\mathbf{x}_0 - \boldsymbol{\varepsilon},
+\mathbf{x}_0-\boldsymbol{\varepsilon}.
 \end{equation}
-independent of \(s\). Equivalently, the continuous-time generative ODE that
-transports noise (\(s{=}1\)) to data (\(s{=}0\)) is
-\begin{equation}
-\label{eq:ode}
-\frac{\mathrm{d}\mathbf{x}}{\mathrm{d}s}
-=
-v_\theta\!\bigl(\mathbf{x},\,sT\bigr),
-\qquad
-\mathbf{x}\big|_{s=1}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
-\end{equation}
-The network is trained by conditional flow matching~\cite{lipman2023flowmatching}
-with an \(\ell_1\) regression loss on the straight-path velocity:
+Sampling transports noise (\(s{=}1\)) to data (\(s{=}0\)) by the ODE
+\(\mathrm{d}\mathbf{x}/\mathrm{d}s=v_\theta(\mathbf{x},sT)\) with
+\(\mathbf{x}|_{s=1}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\).
+We train \(v_\theta\) by conditional flow matching~\cite{lipman2023flowmatching}
+with an \(\ell_1\) velocity objective
 \begin{equation}
 \label{eq:loss}
 \mathcal{L}(\theta)
 =
 \mathbb{E}_{\mathbf{x}_0,\boldsymbol{\varepsilon},t}
-\Biggl[
-\norm{
-v_\theta(\mathbf{x}_t,t)
--
-(\mathbf{x}_0-\boldsymbol{\varepsilon})
-}_1
-\Biggr].
+\bigl[
+\norm{v_\theta(\mathbf{x}_t,t)-(\mathbf{x}_0-\boldsymbol{\varepsilon})}_1
+\bigr].
 \end{equation}
 Volumes are standardized by a fixed scale factor
 \(s_{\mathrm{std}}=1/\mathrm{std}(\mathbf{x})\) estimated once from training
@@ -354,29 +335,24 @@ rescaled after sampling. All ODEs below are stated in this scaled space.
 
 \begin{proposition}[Straight-path velocity]
 \label{prop:velocity}
-For the interpolant~\eqref{eq:path}, the \(s\)-velocity is constantly
-\(\mathbf{x}_0-\boldsymbol{\varepsilon}\) and the endpoint identities
-\(\mathbf{x}_{t=0}=\mathbf{x}_0\), \(\mathbf{x}_{t=T}=\boldsymbol{\varepsilon}\)
-hold.
+For the interpolant in~\eqref{eq:path}, \(\mathrm{d}\mathbf{x}_t/\mathrm{d}s\)
+is constantly \(\mathbf{x}_0-\boldsymbol{\varepsilon}\), with endpoints
+\(\mathbf{x}_{t=0}=\mathbf{x}_0\) and \(\mathbf{x}_{t=T}=\boldsymbol{\varepsilon}\).
 \end{proposition}
 \begin{proof}
-Differentiate~\eqref{eq:path}:
-\(\mathrm{d}\mathbf{x}_t/\mathrm{d}s
-=\mathbf{x}_0-\boldsymbol{\varepsilon}\).
-Substitute \(s{=}0\) and \(s{=}1\).
+Differentiate~\eqref{eq:path} and substitute \(s{=}0\) and \(s{=}1\).
 \end{proof}
 
 \begin{proposition}[Exact \(x_0\) recovery]
 \label{prop:x0}
-If \(v_\theta(\mathbf{x}_t,t)=\mathbf{x}_0-\boldsymbol{\varepsilon}\)
-along~\eqref{eq:path}, then
+If \(v_\theta(\mathbf{x}_t,t)=\mathbf{u}\) along~\eqref{eq:path}, then
 \begin{equation}
 \label{eq:x0hat}
 \hat{\mathbf{x}}_0(\mathbf{x}_t,t)
 \;\coloneqq\;
 \mathbf{x}_t + s\,v_\theta(\mathbf{x}_t,t)
 \end{equation}
-recovers \(\mathbf{x}_0\) exactly for every \(s\in[0,1]\).
+recovers \(\mathbf{x}_0\) for every \(s\in[0,1]\).
 \end{proposition}
 \begin{proof}
 \(\mathbf{x}_t+s(\mathbf{x}_0-\boldsymbol{\varepsilon})
@@ -387,12 +363,11 @@ recovers \(\mathbf{x}_0\) exactly for every \(s\in[0,1]\).
 
 \begin{corollary}[Flow-matching fixed point]
 \label{cor:fm}
-Any minimizer of~\eqref{eq:loss} with zero training risk yields a vector
-field whose characteristics are the rectified straight paths of
-Liu~et~al.~\cite{liu2023flow}; Euler integration of~\eqref{eq:ode} from
-\(s{=}1\) to \(s{=}0\) therefore maps \(\boldsymbol{\varepsilon}\) to
-\(\mathbf{x}_0\) in a single analytic step when \(v_\theta\) is exact, and
-in \(N\) discrete steps otherwise.
+Any zero-risk minimizer of~\eqref{eq:loss} has characteristics given by the
+rectified straight paths of Liu~et~al.~\cite{liu2023flow}.
+Euler integration from \(s{=}1\) to \(s{=}0\) then maps
+\(\boldsymbol{\varepsilon}\) to \(\mathbf{x}_0\) in one analytic step when
+\(v_\theta\) is exact, and in \(N\) discrete steps otherwise.
 \end{corollary}
 
 \paragraph{Network and training regime.}
@@ -420,107 +395,91 @@ We seek a healthy counterfactual \(\hat{\mathbf{x}}\) that
 (i)~agrees with \(\mathbf{x}_0\) on \(\mathcal{K}\) and
 (ii)~is drawn from the learned healthy flow on \(\mathcal{H}\).
 
-\paragraph{Forward noising of known voxels.}
-The rectified-flow forward map of an observation at time \(t\) is
-\begin{equation}
-\label{eq:forward}
-\tilde{\mathbf{x}}_t(\mathbf{x}_0)
-\;=\;
-(1-s)\,\mathbf{x}_0
-+
-s\,\boldsymbol{\varepsilon}',
-\qquad
-\boldsymbol{\varepsilon}'\sim\mathcal{N}(\mathbf{0},\mathbf{I}),
-\end{equation}
-i.e.\ the same interpolant~\eqref{eq:path} with a fresh noise draw.
+\paragraph{Inject and constrained Euler sampling.}
+Let \(\tilde{\mathbf{x}}_t(\mathbf{x}_0)\) denote the forward interpolant
+of~\eqref{eq:path} with a fresh noise draw
+\(\boldsymbol{\varepsilon}'\sim\mathcal{N}(\mathbf{0},\mathbf{I})\).
 Following RePaint~\cite{lugmayr2022repaint}, but without jump resampling,
-we enforce known-region consistency at every reverse step by the
-\emph{inject} operator
+known voxels are overwritten at each reverse time \(t\) by
 \begin{equation}
 \label{eq:inject}
-\mathcal{I}_{\mathbf{m},t}(\mathbf{x}_t;\mathbf{x}_0)
-\;\coloneqq\;
-\mathbf{m}\odot \tilde{\mathbf{x}}_t(\mathbf{x}_0)
+\mathbf{x}_t
+\;\leftarrow\;
+\mathbf{m}\odot\tilde{\mathbf{x}}_t(\mathbf{x}_0)
 \;+\;
-(1-\mathbf{m})\odot \mathbf{x}_t.
+(1-\mathbf{m})\odot\mathbf{x}_t.
 \end{equation}
-
-\paragraph{Constrained Euler sampler.}
 Sampling starts from \(\mathbf{x}_{t_1}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\)
-with a decreasing schedule
+on a decreasing schedule
 \(T\approx t_1>t_2>\cdots>t_N\approx 0\)
-(\(N{=}40\) by default) and applies, for \(k=1,\dots,N-1\),
-\begin{align}
-\label{eq:euler-inject}
-\mathbf{z}_{t_k}
-&\;=\;
-\mathcal{I}_{\mathbf{m},t_k}(\mathbf{x}_{t_k};\mathbf{x}_0),\\
-\label{eq:euler-step}
+(\(N{=}40\) by default). For \(k=1,\dots,N-1\) we apply inject
+then an Euler step,
+\begin{equation}
+\label{eq:sampler}
+\begin{aligned}
+\mathbf{x}_{t_k}
+&\;\leftarrow\;
+\mathbf{m}\odot\tilde{\mathbf{x}}_{t_k}(\mathbf{x}_0)
++(1-\mathbf{m})\odot\mathbf{x}_{t_k},\\
 \mathbf{x}_{t_{k+1}}
-&\;=\;
-\mathbf{z}_{t_k}
+&\;\leftarrow\;
+\mathbf{x}_{t_k}
 +
-v_\theta(\mathbf{z}_{t_k},t_k)\,\Delta s_k,
+v_\theta(\mathbf{x}_{t_k},t_k)\,\Delta s_k,
 \qquad
 \Delta s_k=\tfrac{t_k-t_{k+1}}{T}.
-\end{align}
-After unscaling we obtain \(\hat{\mathbf{x}}\coloneqq\mathbf{x}_{t_N}\).
-We write \(\hat{\mathbf{x}}=\mathcal{G}_\theta(\mathbf{x}_0,\mathbf{m})\)
-for this mask-guided inpainting map.
+\end{aligned}
+\end{equation}
+After unscaling we set \(\hat{\mathbf{x}}\coloneqq\mathbf{x}_{t_N}\) and write
+\(\hat{\mathbf{x}}=\mathcal{G}_\theta(\mathbf{x}_0,\mathbf{m})\) for the full
+mask-guided inpainting map.
 
 \begin{proposition}[Known-region marginal consistency]
 \label{prop:inject}
 Fix \(\mathbf{x}_0\) and \(\mathbf{m}\).
 After each application of~\eqref{eq:inject}, the restriction
-\(\mathbf{x}_t\big|_{\mathcal{K}}\) is distributed exactly as the
-RF forward process~\eqref{eq:forward} of \(\mathbf{x}_0\big|_{\mathcal{K}}\),
-independent of the free evolution on \(\mathcal{H}\).
+\(\mathbf{x}_t\big|_{\mathcal{K}}\) equals the forward interpolant of
+\(\mathbf{x}_0\big|_{\mathcal{K}}\) at time \(t\), independent of the free
+evolution on \(\mathcal{H}\).
 \end{proposition}
 \begin{proof}
-On indices \(i\in\mathcal{K}\), \(\mathcal{I}\) replaces the current state by
-\(\tilde{x}_{t,i}(\mathbf{x}_0)\), which by~\eqref{eq:forward} equals
-\((1-s)x_{0,i}+s\varepsilon'_i\).
-Coordinates in \(\mathcal{H}\) are left unchanged by \(\mathcal{I}\) and
-therefore do not enter the known-region law.
+On \(i\in\mathcal{K}\),~\eqref{eq:inject} replaces the state by
+\(\tilde{x}_{t,i}(\mathbf{x}_0)=(1-s)x_{0,i}+s\varepsilon'_i\).
+Coordinates in \(\mathcal{H}\) are unchanged by the inject.
 \end{proof}
 
 \begin{proposition}[Exact reverse step along a path]
 \label{prop:euler}
-Suppose \(v_\theta=\mathbf{u}\) from~\eqref{eq:velocity} and
-\(\mathbf{x}_{t_k}\) already lies on the interpolant~\eqref{eq:path} of
-some pair \((\mathbf{x}_0^\star,\boldsymbol{\varepsilon})\).
-Then one Euler update~\eqref{eq:euler-step} with step \(\Delta s_k\) lands
-exactly on the same interpolant at time \(t_{k+1}\).
+If \(v_\theta=\mathbf{u}\) from~\eqref{eq:path} and \(\mathbf{x}_{t_k}\)
+lies on the interpolant of some pair
+\((\mathbf{x}_0^\star,\boldsymbol{\varepsilon})\), then the Euler update
+in~\eqref{eq:sampler} lands exactly on the same interpolant at time
+\(t_{k+1}\).
 \end{proposition}
 \begin{proof}
-Along~\eqref{eq:path},
-\(\mathbf{x}_{t_k}=(1-s_k)\mathbf{x}_0^\star+s_k\boldsymbol{\varepsilon}\)
-with \(s_k=t_k/T\).
-Then
+With \(s_k=t_k/T\) and \(\Delta s_k=s_k-s_{k+1}\),
 \begin{align*}
 \mathbf{x}_{t_k}+\Delta s_k\,(\mathbf{x}_0^\star-\boldsymbol{\varepsilon})
 &=
 (1-s_k)\mathbf{x}_0^\star+s_k\boldsymbol{\varepsilon}
-+(\,s_k-s_{k+1}\,)\bigl(\mathbf{x}_0^\star-\boldsymbol{\varepsilon}\bigr)\\
++(s_k-s_{k+1})\bigl(\mathbf{x}_0^\star-\boldsymbol{\varepsilon}\bigr)\\
 &=
-(1-s_{k+1})\mathbf{x}_0^\star+s_{k+1}\boldsymbol{\varepsilon},
+(1-s_{k+1})\mathbf{x}_0^\star+s_{k+1}\boldsymbol{\varepsilon}.
 \end{align*}
-which is \(\mathbf{x}_{t_{k+1}}\) on the same path.
 \end{proof}
 
 \begin{corollary}[Boundary-consistent healthy fill]
 \label{cor:inpaint}
 Under Propositions~\ref{prop:inject}--\ref{prop:euler} with an exact
-velocity field, the terminal sample satisfies
+velocity field,
 \(\hat{\mathbf{x}}\big|_{\mathcal{K}}=\mathbf{x}_0\big|_{\mathcal{K}}\)
-almost surely (up to the final \(s{=}0\) inject), while
+(up to the final \(s{=}0\) inject), while
 \(\hat{\mathbf{x}}\big|_{\mathcal{H}}\) is a healthy draw conditioned on
-the observed context through the coupled ODE.
+the observed context.
 \end{corollary}
 
-Intuitively, inject anchors the reverse process to the observation on
-\(\mathcal{K}\); the learned healthy velocity then fills \(\mathcal{H}\)
-so that \(\hat{\mathbf{x}}\) is a \emph{healthy counterfactual} of
+Thus inject anchors the reverse process on \(\mathcal{K}\), and the healthy
+velocity fills \(\mathcal{H}\), yielding a \emph{healthy counterfactual} of
 \(\mathbf{x}_0\) under the box prompt.
 
 %------------------------------------------------------------------------------
@@ -552,111 +511,43 @@ region for refinement.
 A fixed initial hole is imperfect: it may include healthy soft tissue or miss
 irregular lesion boundaries.
 We therefore iterate inpainting and residual thresholding
-(Algorithm~\ref{alg:refine}), casting mask update as a local residual test
-against the healthy counterfactual.
+(Algorithm~\ref{alg:refine}).
 
-\paragraph{Residual as an anomaly score.}
-After inpainting with hole \(\mathbf{h}^{(r)}\) and keep-mask
-\(\mathbf{m}^{(r)}=1-\mathbf{h}^{(r)}\), define the absolute residual in
-normalized intensity space,
+After inpainting with keep-mask \(\mathbf{m}^{(r)}=1-\mathbf{h}^{(r)}\),
 \begin{equation}
 \label{eq:residual}
-\mathbf{d}^{(r)}
-=
-\bigl|\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}\bigr|,
-\qquad
 \hat{\mathbf{x}}^{(r)}
 =
-\mathcal{G}_\theta\!\bigl(\mathbf{x}_0,\mathbf{m}^{(r)}\bigr).
+\mathcal{G}_\theta\!\bigl(\mathbf{x}_0,\mathbf{m}^{(r)}\bigr),
+\qquad
+\mathbf{d}^{(r)}
+=
+\bigl|\mathbf{x}_0-\hat{\mathbf{x}}^{(r)}\bigr|.
 \end{equation}
-Large residuals mark voxels that the healthy prior cannot explain under the
-current hole. The next hole is the thresholded residual restricted to a
-local search band around the previous hole:
+Large residuals indicate tissue that the healthy prior cannot explain.
+The next hole thresholds the residual inside a dilated search band,
 \begin{equation}
 \label{eq:update}
-\mathbf{h}^{(r+1)}
+\mathbf{h}'
 =
-\1\!\bigl[\mathbf{d}^{(r)} > \tau\bigr]
+\mathbb{1}\!\bigl[\mathbf{d}^{(r)}>\tau\bigr]
 \;\odot\;
 \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr),
-\end{equation}
-with residual threshold \(\tau{=}0.05\) and 3D dilation radius \(\rho{=}2\).
-If \(\lVert\mathbf{h}^{(r+1)}\rVert_0<\eta\) with \(\eta{=}8\), we retain
-\(\mathbf{h}^{(r)}\) (stability safeguard).
-We run \(R\) refinement rounds (\(R{=}2\) in our best configuration;
-\(R{=}3\) in ablations), i.e.\ \(R{+}1\) inpaint passes in total.
-No morphological open~/~close post-processing is applied by default.
-
-\begin{assumption}[Healthy prior and covering hole]
-\label{ass:healthy}
-The trained field \(v_\theta\) is an exact healthy transport
-(Corollary~\ref{cor:fm}).
-The lesion support \(\mathrm{supp}(\mathbf{y})\) is contained in the current
-hole, \(\mathrm{supp}(\mathbf{y})\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\),
-and intensities on
-\(\mathrm{supp}(\mathbf{h}^{(r)})\setminus\mathrm{supp}(\mathbf{y})\)
-are healthy (in-distribution for \(p_{\mathrm{healthy}}\)).
-\end{assumption}
-
-\begin{proposition}[Residual localization]
-\label{prop:residual}
-Under Assumption~\ref{ass:healthy} and exact boundary consistency
-(Corollary~\ref{cor:inpaint}),
-\begin{equation}
-d^{(r)}_i
+\qquad
+\mathbf{h}^{(r+1)}
 =
 \begin{cases}
-0, & i\notin\mathrm{supp}(\mathbf{h}^{(r)}),\\[2pt]
-0, & i\in\mathrm{supp}(\mathbf{h}^{(r)})\setminus\mathrm{supp}(\mathbf{y}),\\[2pt]
-\bigl|x_{0,i}-\hat{x}^{(r)}_i\bigr|>0
-  & \text{almost surely if }\;
-    x_{0,i}\;\text{is off the healthy manifold},
+\mathbf{h}' & \text{if }\|\mathbf{h}'\|_0\ge\eta,\\
+\mathbf{h}^{(r)} & \text{otherwise,}
 \end{cases}
 \end{equation}
-up to the stochasticity of~\eqref{eq:forward}.
-Consequently, for any threshold
-\(0<\tau<\inf_{i\in\mathrm{supp}(\mathbf{y})}d^{(r)}_i\),
-the update~\eqref{eq:update} retains every lesion voxel that lies inside the
-dilated search band and drops healthy voxels whose residual falls below
-\(\tau\).
-\end{proposition}
-\begin{proof}
-On \(\mathcal{K}^{(r)}\) (outside the hole), inject forces
-\(\hat{x}^{(r)}_i=x_{0,i}\), hence \(d^{(r)}_i=0\).
-Inside the hole but off the lesion, Assumption~\ref{ass:healthy} implies
-the observation is a healthy draw; an exact healthy fill reproduces it in
-expectation, so the residual vanishes in the noise-free limit.
-On lesion voxels, \(\mathbf{x}_0\) lies off \(p_{\mathrm{healthy}}\) while
-\(\hat{\mathbf{x}}^{(r)}\) is constrained to that manifold, so the
-coordinates differ and \(d^{(r)}_i>0\).
-Thresholding inside
-\(\mathrm{Dilate}(\mathbf{h}^{(r)};\rho)\) therefore selects a subset of
-anomalous coordinates without leaving the local search region.
-\end{proof}
-
-\begin{proposition}[Monotone localization under over-coverage]
-\label{prop:mono}
-Suppose \(\mathrm{supp}(\mathbf{y})\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\)
-and the search band does not introduce new false positives, i.e.\
-\(\1[\mathbf{d}^{(r)}>\tau]\odot\mathrm{Dilate}(\mathbf{h}^{(r)};\rho)
-\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\)
-whenever residuals outside \(\mathbf{h}^{(r)}\) are zero
-(Proposition~\ref{prop:residual}).
-Then
-\(\mathrm{supp}(\mathbf{y})
-\subseteq\mathrm{supp}(\mathbf{h}^{(r+1)})
-\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\):
-each successful round weakly shrinks the hole while preserving lesion
-coverage.
-\end{proposition}
-\begin{proof}
-Lesion voxels have \(d^{(r)}_i>\tau\) and lie in \(\mathbf{h}^{(r)}\),
-hence in its dilation, so they survive~\eqref{eq:update}.
-Any voxel retained must lie in the dilation of \(\mathbf{h}^{(r)}\); under
-the stated residual vanishing outside the hole and the inclusion
-hypothesis, no coordinate outside \(\mathbf{h}^{(r)}\) is added, yielding
-the nested supports.
-\end{proof}
+with \(\tau{=}0.05\), dilation radius \(\rho{=}2\), and stability floor
+\(\eta{=}8\) voxels.
+We run \(R\) refinement updates (\(R{=}2\) by default; \(R{=}3\) in
+ablations) and therefore \(R{+}1\) inpaint passes: the final prediction is
+the hole used for the last inpaint, \(\hat{\mathbf{y}}=\mathbf{h}^{(R)}\)
+(Algorithm~\ref{alg:refine}).
+No morphological open~/~close post-processing is applied in the default method.
 
 \begin{algorithm}[t]
 \caption{Iterative residual mask refinement for nodule localization}
@@ -665,35 +556,37 @@ the nested supports.
 \REQUIRE CT patch $\mathbf{x}_0$, initial hole $\mathbf{h}^{(0)}$, RF
 inpainter $\mathcal{G}_\theta$, rounds $R$, threshold $\tau$, dilation
 $\rho$, min.\ voxels $\eta$
-\ENSURE Predicted nodule mask $\hat{\mathbf{y}}$
-\FOR{$r = 0,\dots,R$}
+\ENSURE Predicted nodule mask $\hat{\mathbf{y}}=\mathbf{h}^{(R)}$
+\FOR{$r = 0$ \TO $R$}
+\STATE $\mathbf{m}^{(r)} \gets 1-\mathbf{h}^{(r)}$
 \STATE $\hat{\mathbf{x}}^{(r)} \gets \mathcal{G}_\theta\!\bigl(
-  \mathbf{x}_0,\,\mathbf{m}{=}1{-}\mathbf{h}^{(r)}\bigr)$
-  \COMMENT{Eqs.~\eqref{eq:inject}--\eqref{eq:euler-step}}
+  \mathbf{x}_0,\,\mathbf{m}^{(r)}\bigr)$
+  \COMMENT{Eqs.~\eqref{eq:inject},~\eqref{eq:sampler}}
 \IF{$r = R$}
 \STATE \textbf{break}
+  \COMMENT{final inpaint; no further update}
 \ENDIF
-\STATE $\mathbf{d}^{(r)} \gets |\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}|$
+\STATE $\mathbf{d}^{(r)} \gets \bigl|\mathbf{x}_0-\hat{\mathbf{x}}^{(r)}\bigr|$
   \COMMENT{Eq.~\eqref{eq:residual}}
-\STATE $\mathbf{s} \gets \mathrm{Dilate}(\mathbf{h}^{(r)};\,\rho)$
-\STATE $\mathbf{h}' \gets \mathbb{1}[\mathbf{d}^{(r)} > \tau]
-  \odot \mathbf{s}$
+\STATE $\mathbf{b}^{(r)} \gets \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr)$
+\STATE $\mathbf{h}' \gets \mathbb{1}\!\bigl[\mathbf{d}^{(r)}>\tau\bigr]
+  \odot \mathbf{b}^{(r)}$
   \COMMENT{Eq.~\eqref{eq:update}}
-\IF{$|\mathbf{h}'|_0 \ge \eta$}
+\IF{$\|\mathbf{h}'\|_0 \ge \eta$}
 \STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}'$
 \ELSE
 \STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}^{(r)}$
+  \COMMENT{stability safeguard}
 \ENDIF
 \ENDFOR
 \STATE \textbf{return} $\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}$
 \end{algorithmic}
 \end{algorithm}
 
-The loop therefore couples a geometric box prior with an appearance test
-against the healthy flow: Propositions~\ref{prop:residual}--\ref{prop:mono}
-formalize why over-complete initial boxes shrink toward the lesion under
-residual thresholding, while Eq.~\eqref{eq:inject} keeps each iterate
-anchored to observed healthy context.
+The loop couples a geometric box prior with an appearance test against the
+healthy flow:~\eqref{eq:inject}--\eqref{eq:sampler} keep each inpaint
+anchored to observed context, while~\eqref{eq:update} shrinks over-complete
+holes toward residual-supported lesion voxels.
 
 %------------------------------------------------------------------------------
 \subsection{Relation to Discriminative and Promptable Segmenters}
@@ -806,7 +699,7 @@ Figure~\ref{fig:results} summarizes the same comparison;
 Figure~\ref{fig:fp-tradeoff} places every method in the true-nodule Dice
 vs.\ healthy FP volume plane.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \caption{LIDC matched-box evaluation: true-nodule Dice~/~IoU
 (\(N{=}1658\) positive patches) and healthy false-positive predicted
@@ -839,7 +732,7 @@ VISTA3D$^\dagger$
 \end{tabular}\\[0.25em]
 {\footnotesize $^\dagger$Near-silent on healthy prompts, but poor on
 true nodules.}
-\end{table}
+\end{table*}
 
 \paragraph{Takeaway.}
 On true nodules, healthy-counterfactual inpainting matches strong
