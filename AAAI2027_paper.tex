@@ -329,9 +329,10 @@ with an \(\ell_1\) velocity objective
 \bigr].
 \end{equation}
 Volumes are standardized by a fixed scale factor
-\(s_{\mathrm{std}}=1/\mathrm{std}(\mathbf{x})\) estimated once from training
-data (MAISI-style) and reused for training and inference; outputs are
-rescaled after sampling. All ODEs below are stated in this scaled space.
+\(s_{\mathrm{std}}=1/\mathrm{std}(\mathbf{x})\) estimated once from the
+LIDC training set (MAISI-style intensity scaling) and reused for training
+and inference; outputs are rescaled after sampling. All ODEs below are
+stated in this scaled space.
 
 \begin{proposition}[Straight-path velocity]
 \label{prop:velocity}
@@ -434,18 +435,40 @@ After unscaling we set \(\hat{\mathbf{x}}\coloneqq\mathbf{x}_{t_N}\) and write
 \(\hat{\mathbf{x}}=\mathcal{G}_\theta(\mathbf{x}_0,\mathbf{m})\) for the full
 mask-guided inpainting map.
 
-\begin{proposition}[Known-region marginal consistency]
+\begin{proposition}[Known-region consistency under inject]
 \label{prop:inject}
-Fix \(\mathbf{x}_0\) and \(\mathbf{m}\).
-After each application of~\eqref{eq:inject}, the restriction
-\(\mathbf{x}_t\big|_{\mathcal{K}}\) equals the forward interpolant of
-\(\mathbf{x}_0\big|_{\mathcal{K}}\) at time \(t\), independent of the free
-evolution on \(\mathcal{H}\).
+Fix an observation \(\mathbf{x}_0\) and keep-mask \(\mathbf{m}\).
+Immediately after one step of~\eqref{eq:inject} at time \(t\)
+(with \(s=t/T\)), every known voxel is reset to the noised observation,
+while every hole voxel is left unchanged:
+\begin{equation*}
+x_{t,i}
+=
+\begin{cases}
+(1-s)\,x_{0,i}+s\,\varepsilon'_i,
+  & i\in\mathcal{K},\\[2pt]
+x_{t,i}^{\mathrm{pre}},
+  & i\in\mathcal{H},
+\end{cases}
+\end{equation*}
+where \(x_{t,i}^{\mathrm{pre}}\) is the pre-inject state and
+\(\boldsymbol{\varepsilon}'\sim\mathcal{N}(\mathbf{0},\mathbf{I})\).
+In particular, the law of \(\mathbf{x}_t\big|_{\mathcal{K}}\) does not
+depend on how the sampler evolved inside the hole \(\mathcal{H}\).
 \end{proposition}
 \begin{proof}
-On \(i\in\mathcal{K}\),~\eqref{eq:inject} replaces the state by
-\(\tilde{x}_{t,i}(\mathbf{x}_0)=(1-s)x_{0,i}+s\varepsilon'_i\).
-Coordinates in \(\mathcal{H}\) are unchanged by the inject.
+If \(i\in\mathcal{K}\), then \(m_i=1\) and~\eqref{eq:inject} sets
+\begin{equation*}
+x_{t,i}
+\;\leftarrow\;
+\tilde{x}_{t,i}(\mathbf{x}_0)
+=
+(1-s)\,x_{0,i}+s\,\varepsilon'_i.
+\end{equation*}
+If \(i\in\mathcal{H}\), then \(m_i=0\) and the same update leaves
+\(x_{t,i}\) unchanged.
+Thus \(\mathbf{x}_t\big|_{\mathcal{K}}\) depends only on
+\((\mathbf{x}_0,\boldsymbol{\varepsilon}',t)\).
 \end{proof}
 
 \begin{proposition}[Exact reverse step along a path]
@@ -528,18 +551,20 @@ Large residuals indicate tissue that the healthy prior cannot explain.
 The next hole thresholds the residual inside a dilated search band,
 \begin{equation}
 \label{eq:update}
+\begin{aligned}
 \mathbf{h}'
-=
+&=
 \mathbb{1}\!\bigl[\mathbf{d}^{(r)}>\tau\bigr]
 \;\odot\;
 \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr),
-\qquad
+\\
 \mathbf{h}^{(r+1)}
-=
+&=
 \begin{cases}
 \mathbf{h}' & \text{if }\|\mathbf{h}'\|_0\ge\eta,\\
-\mathbf{h}^{(r)} & \text{otherwise,}
+\mathbf{h}^{(r)} & \text{otherwise.}
 \end{cases}
+\end{aligned}
 \end{equation}
 with \(\tau{=}0.05\), dilation radius \(\rho{=}2\), and stability floor
 \(\eta{=}8\) voxels.
