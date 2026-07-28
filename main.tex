@@ -432,32 +432,30 @@ No morphological open~/~close post-processing is applied in the default method.
 \caption{Iterative residual mask refinement for nodule localization}
 \label{alg:refine}
 \begin{algorithmic}[1]
-\Require \(\mathbf{x}_0\), \(\mathbf{h}^{(0)}\), \(\mathcal{G}_\theta\),
-\(R\), \(\tau\), \(\rho\), \(\eta\)
-\Ensure \(\hat{\mathbf{y}}\)
-\For{\(r = 0,\dots,R\)}
-\State \(\hat{\mathbf{x}}^{(r)} \gets
-  \mathcal{G}_\theta(\mathbf{x}_0,\,
-  \mathbf{m}{=}1{-}\mathbf{h}^{(r)})\)
-  \hfill\Comment{Eq.~\eqref{eq:inject}}
-\If{\(r = R\)}
-\State \textbf{break}
-\EndIf
-\State \(\mathbf{d}^{(r)} \gets
-  |\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}|\)
-  \hfill\Comment{Eq.~\eqref{eq:residual}}
-\State \(\mathbf{s} \gets
-  \mathrm{Dilate}(\mathbf{h}^{(r)};\,\rho)\)
-\State \(\mathbf{h}' \gets
-  \mathbb{1}[\mathbf{d}^{(r)} > \tau] \odot \mathbf{s}\)
-  \hfill\Comment{Eq.~\eqref{eq:update}}
-\If{\(|\mathbf{h}'|_0 \ge \eta\)}
-\State \(\mathbf{h}^{(r+1)} \gets \mathbf{h}'\)
-\Else
-\State \(\mathbf{h}^{(r+1)} \gets \mathbf{h}^{(r)}\)
-\EndIf
-\EndFor
-\State \textbf{return} \(\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}\)
+\REQUIRE CT patch $\mathbf{x}_0$, initial hole $\mathbf{h}^{(0)}$, RF
+inpainter $\mathcal{G}_\theta$, rounds $R$, threshold $\tau$, dilation
+$\rho$, min.\ voxels $\eta$
+\ENSURE Predicted nodule mask $\hat{\mathbf{y}}$
+\FOR{$r = 0,\dots,R$}
+\STATE $\hat{\mathbf{x}}^{(r)} \gets \mathcal{G}_\theta\!\bigl(
+  \mathbf{x}_0,\,\mathbf{m}{=}1{-}\mathbf{h}^{(r)}\bigr)$
+  \COMMENT{Eq.~\eqref{eq:inject}}
+\IF{$r = R$}
+\STATE \textbf{break}
+\ENDIF
+\STATE $\mathbf{d}^{(r)} \gets |\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}|$
+  \COMMENT{Eq.~\eqref{eq:residual}}
+\STATE $\mathbf{s} \gets \mathrm{Dilate}(\mathbf{h}^{(r)};\,\rho)$
+\STATE $\mathbf{h}' \gets \mathbb{1}[\mathbf{d}^{(r)} > \tau]
+  \odot \mathbf{s}$
+  \COMMENT{Eq.~\eqref{eq:update}}
+\IF{$|\mathbf{h}'|_0 \ge \eta$}
+\STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}'$
+\ELSE
+\STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}^{(r)}$
+\ENDIF
+\ENDFOR
+\STATE \textbf{return} $\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}$
 \end{algorithmic}
 \end{algorithm}
 
@@ -633,8 +631,8 @@ cost of over-calling on normal lung.
   \includegraphics[width=\textwidth]{figures/fig_qual_lidc.pdf}
   \caption{Qualitative LIDC overlays under matched box prompts
   (red~=~GT, lime~=~prediction). Columns: GT, SAM-Med2D, nnInteractive,
-  SAM-Med3D, SegVol, VISTA3D, and Ours (\(40\)-step, \(R{=}2\)).
-  Cases shown are high-agreement examples for Ours under the same prompts.}
+  SAM-Med3D, SegVol, VISTA3D, and Ours. Ours uses \(40\) steps and
+  \(R{=}2\). Cases shown are high-agreement examples under the same prompts.}
   \label{fig:qual-lidc}
 \end{figure*}
 
@@ -707,9 +705,10 @@ whereas Ours remains sparse.
   \centering
   \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp.pdf}
   \caption{Healthy false-positive probe: random boxes in nodule-free
-  lung (yellow~=~prompt, lime~=~prediction; GT empty). Object-centric
-  baselines often fill the box; Ours is more conservative
-  (Table~\ref{tab:healthy_fp}).}
+  lung (yellow~=~prompt contour, green~=~predicted mask fill; GT empty).
+  Columns match Figure~\ref{fig:qual-lidc}. Object-centric baselines often
+  fill the box; Ours (\(60\)-step, \(R{=}3\); Table~\ref{tab:healthy_fp})
+  is more conservative.}
   \label{fig:qual-fp}
 \end{figure*}
 
@@ -768,13 +767,12 @@ VISTA3D       & 0.19 & 0.45 & 0.12 \\
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=0.95\textwidth]{figures/fig_qual_maisi.pdf}\\[0.4em]
-  \includegraphics[width=0.95\textwidth]{figures/fig_qual_nsclc.pdf}
+  \includegraphics[width=\textwidth]{figures/fig_qual_maisi.pdf}\\[0.12em]
+  \includegraphics[width=\textwidth]{figures/fig_qual_nsclc.pdf}
   \caption{Cross-dataset qualitative overlays (red~=~GT, lime~=~prediction).
-  Top: MAISI synthetic nodules (same method columns as
-  Figure~\ref{fig:qual-lidc}; Ours \(60\)-step/\(R{=}3\)).
-  Bottom: NSCLC-Radiomics \(64^3\) tumor patches cropped from the
-  processed volumes (same columns; Ours \(60\)-step, \(R{=}1\);
+  Columns: GT, SAM-Med2D, nnInteractive, SAM-Med3D, SegVol, VISTA3D, Ours.
+  Top: MAISI synthetic nodules (Ours \(60\)-step, \(R{=}3\)).
+  Bottom: NSCLC-Radiomics \(64^3\) tumor patches (Ours \(60\)-step, \(R{=}1\);
   cases LUNG1-024 / 145 / 098 / 173).
   Illustrative examples under matched boxes; see Table~\ref{tab:cross}
   for aggregate Dice.}

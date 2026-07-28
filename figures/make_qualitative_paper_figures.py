@@ -46,7 +46,11 @@ LOG = logging.getLogger("paper.qual")
 LIDC_CASES = [1370, 76, 1183, 338]  # Dice ≈ 0.93
 ABLATION_CASES = [1370, 76, 1183]
 MAISI_CASES = [50, 9, 86, 16]  # Dice ≈ 0.87 / 0.86 / 0.84 / 0.84 (compact)
-HEALTHY_CASES = [217, 1365, 1532, 2002]
+# Relative wins vs SAM2D/3D/SegVol/nnInt (lowest Ours vol, largest gap).
+# Absolute best (need GPU to rebuild visual_comparison gallery + nnI):
+#   [1916, 2509, 1643, 1622]
+# Gallery fallback (present in visual_comparison_healthy_fp.png):
+HEALTHY_CASES = [2514, 1680, 971, 3045]
 NSCLC_PATIENTS = ["LUNG1-024", "LUNG1-145", "LUNG1-098", "LUNG1-173"]  # Dice ≈ 0.90–0.89
 # One 64³ test-cache patch per patient (high Ours Dice, compact mid-slice).
 NSCLC_PATCHES = [69, 352, 239, 431]  # LUNG1-024 / 145 / 098 / 173
@@ -150,9 +154,44 @@ def _patch_foundation_imports() -> None:
 def save_fig(fig: plt.Figure, stem: str) -> None:
     for ext in ("png", "pdf"):
         path = FIG_DIR / f"{stem}.{ext}"
-        fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="white")
+        fig.savefig(
+            path,
+            dpi=300,
+            bbox_inches="tight",
+            facecolor="white",
+            pad_inches=0.015,
+        )
         LOG.info("Wrote %s", path)
     plt.close(fig)
+
+
+def _pack_qual_fig(fig: plt.Figure, *, has_suptitle: bool = True) -> None:
+    """Pack image panels tightly (flush columns; tiny row gap for titles)."""
+    for ax in fig.axes:
+        # Fill the axes box completely — aspect='equal' letterboxes and looks
+        # like large column gutters when cells are not perfectly square.
+        ax.set_aspect("auto")
+        ax.margins(0)
+        ax.tick_params(length=0, pad=0)
+    fig.subplots_adjust(
+        left=0.001,
+        right=0.999,
+        bottom=0.001,
+        top=0.91 if has_suptitle else 0.98,
+        wspace=0.0,
+        hspace=0.06,
+    )
+
+
+def _qual_subplots(nrows: int, ncols: int, cell: float = 1.22):
+    """Nearly square panels; top margin reserved for column titles / suptitle."""
+    return plt.subplots(
+        nrows,
+        ncols,
+        figsize=(cell * ncols, cell * nrows + 0.35),
+        squeeze=False,
+        gridspec_kw={"wspace": 0.0, "hspace": 0.06},
+    )
 
 
 def _display_limits(sl: np.ndarray):
@@ -195,8 +234,12 @@ def _contour(ax, m2d, color, lw=1.2, linestyle="-"):
 def _style(ax, title=""):
     ax.set_xticks([])
     ax.set_yticks([])
+    ax.set_aspect("auto")
+    ax.margins(0)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
     if title:
-        ax.set_title(title, fontweight="bold", fontsize=9, pad=3)
+        ax.set_title(title, fontweight="bold", fontsize=7.5, pad=1.0)
 
 
 def _ours_key(steps: int, rounds: int) -> str:
@@ -362,7 +405,7 @@ def run_lidc_and_ablation(force: bool) -> None:
         "sam_med3d": "SAM-Med3D",
         "segvol": "SegVol",
         "vista3d": "VISTA3D",
-        ours_k: "Ours (40-step, R=2)",
+        ours_k: "Ours",
     }
     main_stores = [s for s in stores if s.sample_index in LIDC_CASES]
     main_stores.sort(key=lambda s: LIDC_CASES.index(s.sample_index))
@@ -459,6 +502,188 @@ def _collect_stores_lidc(cfg, logger, force: bool):
     return stores
 
 
+def _render_overlay_rgb(
+    gray,
+    pred=None,
+    gt=None,
+    px: int = 256,
+    *,
+    fill_pred: bool = False,
+    pred_alpha: float = 0.40,
+) -> np.ndarray:
+    """Rasterize one CT panel to RGB (flush mosaic building block)."""
+    fig, ax = plt.subplots(figsize=(px / 100.0, px / 100.0), dpi=100)
+    ax.imshow(gray, cmap="gray", vmin=0, vmax=1, aspect="equal")
+    if pred is not None:
+        arr = np.asarray(pred, dtype=float)
+        if arr.ndim > 2:
+            arr = np.squeeze(arr)
+        if fill_pred and arr.size and float(np.nanmax(arr)) > 0:
+            mask = arr > 0.5
+            overlay = np.zeros((*mask.shape, 4), dtype=np.float32)
+            overlay[mask] = (0.20, 0.95, 0.20, float(pred_alpha))
+            ax.imshow(overlay, interpolation="nearest", aspect="equal")
+        _contour(ax, arr, "lime", 1.45)
+    if gt is not None:
+        _contour(ax, gt, "red", 1.15)
+    ax.set_axis_off()
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    fig.canvas.draw()
+    rgba = np.asarray(fig.canvas.buffer_rgba())
+    plt.close(fig)
+    return np.ascontiguousarray(rgba[..., :3])
+
+
+def _mask_from_color_contours(panel_rgb: np.ndarray, *, mode: str = "lime") -> np.ndarray:
+    """Recover a filled 2D mask from lime/yellow contour pixels on a gallery panel.
+
+    Gallery panels only draw contours. When a model predicts (nearly) the whole
+    prompt box — common for SAM-Med3D on healthy FP — the lime stroke is a thin
+    ring that often has gaps where the yellow prompt contour overwrote it.
+    Closing + hole-fill restores the solid mask; a residual shell falls back to
+    the contour bounding box.
+    """
+    import cv2
+    from scipy import ndimage
+
+    panel = np.asarray(panel_rgb)
+    r = panel[..., 0].astype(np.int16)
+    g = panel[..., 1].astype(np.int16)
+    b = panel[..., 2].astype(np.int16)
+    if mode == "lime":
+        edge = (g > 140) & (r < 160) & (b < 160) & (g > r + 20) & (g > b + 20)
+    elif mode == "yellow":
+        edge = (r > 160) & (g > 160) & (b < 120) & (r > b + 30) & (g > b + 30)
+    else:
+        raise ValueError(mode)
+    if not np.any(edge):
+        return np.zeros(panel.shape[:2], dtype=bool)
+
+    closed = ndimage.binary_closing(edge, iterations=3)
+    closed = ndimage.binary_dilation(closed, iterations=2)
+    edge_u8 = (closed.astype(np.uint8)) * 255
+    contours, _ = cv2.findContours(edge_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    mask = np.zeros(panel.shape[:2], dtype=np.uint8)
+    if contours:
+        cv2.drawContours(mask, contours, -1, 1, thickness=cv2.FILLED)
+    filled = mask.astype(bool) | ndimage.binary_fill_holes(closed) | ndimage.binary_fill_holes(edge)
+
+    # Keep thin single-pixel predictions (very small nodules / FP blobs).
+    if filled.sum() <= max(8, int(edge.sum() * 0.5)):
+        filled = edge | ndimage.binary_dilation(edge, iterations=1)
+
+    # Hollow rectangular ring (SAM-Med3D ≈ prompt box): lime stroke lies on the
+    # perimeter with an empty interior. Only then fill the contour bbox — do not
+    # trigger on sparse speckles (Ours) whose bbox interior is also mostly empty.
+    ys, xs = np.where(edge)
+    y0, y1, x0, x1 = int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())
+    h, w = y1 - y0 + 1, x1 - x0 + 1
+    if h >= 12 and w >= 12:
+        pad = max(2, int(0.12 * min(h, w)))
+        interior_sl = (slice(y0 + pad, y1 - pad + 1), slice(x0 + pad, x1 - pad + 1))
+        band = np.zeros_like(edge)
+        band[y0 : y1 + 1, x0 : x1 + 1] = True
+        band[interior_sl] = False
+        edge_on_band = float(edge[band].sum()) / float(edge.sum())
+        edge_in_interior = float(edge[interior_sl].mean()) if edge[interior_sl].size else 0.0
+        fill_in_interior = float(filled[interior_sl].mean()) if filled[interior_sl].size else 0.0
+        if edge_on_band >= 0.70 and edge_in_interior < 0.03 and fill_in_interior < 0.45:
+            solid = np.zeros_like(filled)
+            solid[y0 : y1 + 1, x0 : x1 + 1] = True
+            filled = solid
+    return filled
+
+
+def _fill_colored_regions(
+    panel_rgb: np.ndarray,
+    *,
+    mode: str = "lime",
+    alpha: float = 0.45,
+) -> np.ndarray:
+    """Fill interior of lime/yellow contour overlays already drawn on a gallery panel."""
+    panel = np.asarray(panel_rgb)
+    region = _mask_from_color_contours(panel, mode=mode)
+    if not region.any():
+        return panel.copy()
+    fill_rgb = (
+        np.array([40, 230, 40], dtype=np.float32)
+        if mode == "lime"
+        else np.array([255, 220, 40], dtype=np.float32)
+    )
+    out = panel.astype(np.float32)
+    out[region] = (1.0 - alpha) * out[region] + alpha * fill_rgb
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def _compose_mosaic(
+    panels: list[list[np.ndarray]],
+    col_labels: list[str],
+    title: str,
+    *,
+    col_gap: int = 2,
+    row_gap: int = 6,
+    stem: str,
+) -> None:
+    """Tile RGB panels with tiny pixel gaps; column labels baked into a header strip."""
+    from PIL import Image as _PILImage
+    from PIL import ImageDraw, ImageFont
+
+    nrows, ncols = len(panels), len(panels[0])
+    h = int(panels[0][0].shape[0])
+    w = int(panels[0][0].shape[1])
+    gap_c = np.full((h, col_gap, 3), 255, dtype=np.uint8)
+    row_chunks = []
+    for r in range(nrows):
+        parts = []
+        for c in range(ncols):
+            tile = panels[r][c]
+            if tile.shape[0] != h or tile.shape[1] != w:
+                tile = np.asarray(_PILImage.fromarray(tile).resize((w, h), _PILImage.NEAREST))
+            parts.append(tile)
+            if c < ncols - 1:
+                parts.append(gap_c)
+        row_chunks.append(np.concatenate(parts, axis=1))
+    if nrows > 1:
+        gap_r = np.full((row_gap, row_chunks[0].shape[1], 3), 255, dtype=np.uint8)
+        mosaic_parts = []
+        for r, row in enumerate(row_chunks):
+            mosaic_parts.append(row)
+            if r < nrows - 1:
+                mosaic_parts.append(gap_r)
+        mosaic = np.concatenate(mosaic_parts, axis=0)
+    else:
+        mosaic = row_chunks[0]
+
+    mw = int(mosaic.shape[1])
+    # Header strip: each label centered on its panel column (pixel-aligned).
+    header_h = 32
+    header = _PILImage.new("RGB", (mw, header_h), (255, 255, 255))
+    draw = ImageDraw.Draw(header)
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 16)
+    except OSError:
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
+        except OSError:
+            font = ImageFont.load_default()
+    for c, lab in enumerate(col_labels):
+        cx = c * (w + col_gap) + w // 2
+        bbox = draw.textbbox((0, 0), lab, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        draw.text((cx - tw // 2, max(0, (header_h - th) // 2 - 1)), lab, fill=(0, 0, 0), font=font)
+    mosaic = np.concatenate([np.asarray(header), mosaic], axis=0)
+
+    mh, mw = mosaic.shape[:2]
+    fig_w = max(6.9, 1.05 * ncols)
+    fig_h = fig_w * (mh / mw) + 0.32
+    fig = plt.figure(figsize=(fig_w, fig_h), facecolor="white")
+    ax = fig.add_axes([0.005, 0.01, 0.99, 0.90])
+    ax.imshow(mosaic, aspect="equal", interpolation="nearest")
+    ax.set_axis_off()
+    fig.suptitle(title, fontweight="bold", fontsize=10, y=0.985)
+    save_fig(fig, stem)
+
+
 def _draw_paper_grid(stores, col_keys, col_labels, stem, title, hu_min, hu_max, show_gt_on_all=True):
     # Drop method columns with no prediction object at all (failed FM imports).
     kept = []
@@ -468,26 +693,20 @@ def _draw_paper_grid(stores, col_keys, col_labels, stem, title, hu_min, hu_max, 
         else:
             LOG.warning("Omitting empty column %s from %s", key, stem)
     col_keys = kept
-    nrows, ncols = len(stores), len(col_keys)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(1.65 * ncols, 1.65 * nrows), squeeze=False)
-    for r, st in enumerate(stores):
+    labels = [col_labels.get(k, k) for k in col_keys]
+    panels: list[list[np.ndarray]] = []
+    for st in stores:
         g2 = _safe_slice(st.gt_hu, st.z)
         if g2 is None:
             continue
         gray = _gray(g2, hu_min, hu_max)
-        for c, key in enumerate(col_keys):
-            ax = axes[r, c]
-            ax.imshow(gray, cmap="gray", vmin=0, vmax=1)
-            # Draw prediction first (thicker lime), then GT (red) so tight
-            # Ours–GT overlap still shows both colors.
-            if key != "gt":
-                _contour(ax, _safe_slice(_lookup_pred(st, key), st.z), "lime", 1.45)
-            if show_gt_on_all:
-                _contour(ax, _safe_slice(st.nodule, st.z), "red", 1.15)
-            _style(ax, col_labels.get(key, key) if r == 0 else "")
-    fig.suptitle(title, fontweight="bold", fontsize=11, y=1.01)
-    fig.tight_layout()
-    save_fig(fig, stem)
+        row = []
+        gt2 = _safe_slice(st.nodule, st.z) if show_gt_on_all else None
+        for key in col_keys:
+            pred = None if key == "gt" else _safe_slice(_lookup_pred(st, key), st.z)
+            row.append(_render_overlay_rgb(gray, pred=pred, gt=gt2 if key != "gt" or show_gt_on_all else gt2))
+        panels.append(row)
+    _compose_mosaic(panels, labels, title, col_gap=2, row_gap=6, stem=stem)
 
 
 def run_maisi(force: bool) -> None:
@@ -564,7 +783,7 @@ def run_maisi(force: bool) -> None:
         "sam_med3d": "SAM-Med3D",
         "segvol": "SegVol",
         "vista3d": "VISTA3D",
-        ours_k: "Ours (60-step, R=3)",
+        ours_k: "Ours",
     }
     stores = sorted(stores, key=lambda s: MAISI_CASES.index(s.sample_index))
     _draw_paper_grid(
@@ -590,6 +809,43 @@ def _mid_box_z(bbox_zyx) -> int:
     return int((z0 + z1) // 2)
 
 
+def _load_scripts_pyc(mod_name: str):
+    """Load a ControlNet ``scripts.*`` module from ``__pycache__`` (sources often absent)."""
+    import importlib.util
+    import sys
+    import types
+
+    if mod_name in sys.modules:
+        return sys.modules[mod_name]
+    if "scripts" not in sys.modules:
+        pkg = types.ModuleType("scripts")
+        pkg.__path__ = [str(CNET / "scripts")]
+        sys.modules["scripts"] = pkg
+    short = mod_name.split(".", 1)[1]
+    pyc_dir = CNET / "scripts" / "__pycache__"
+    candidates = sorted(pyc_dir.glob(f"{short}.cpython-*.pyc"), reverse=True)
+    if not candidates:
+        raise ImportError(f"No pyc for {mod_name} under {pyc_dir}")
+    # Prefer matching this interpreter's magic when possible.
+    tag = f"cpython-{sys.version_info.major}{sys.version_info.minor}"
+    ordered = [p for p in candidates if tag in p.name] + [
+        p for p in candidates if tag not in p.name
+    ]
+    last_err: Exception | None = None
+    for path in ordered:
+        try:
+            spec = importlib.util.spec_from_file_location(mod_name, path)
+            assert spec and spec.loader
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[mod_name] = mod
+            spec.loader.exec_module(mod)
+            return mod
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            sys.modules.pop(mod_name, None)
+    raise ImportError(f"Failed to load {mod_name}: {last_err}")
+
+
 def _run_nni_healthy(case_indices: list[int]) -> dict[int, np.ndarray]:
     """Re-infer nnInteractive on healthy random-box prompts (fixes empty gallery column).
 
@@ -601,24 +857,53 @@ def _run_nni_healthy(case_indices: list[int]) -> dict[int, np.ndarray]:
 
     import torch
 
-    from scripts.benchmark_nninteractive import (
-        load_nninteractive_session,
-        prepare_nninteractive_model,
-        run_nninteractive_on_cases,
-    )
-    from scripts.benchmark_test_foundation import normalize_inpaint_data_cfg
-    from scripts.setting import load_yaml_config
+    npz_path = CACHE / "healthy_nni_preds.npz"
+    out: dict[int, np.ndarray] = {}
+    if npz_path.is_file():
+        bag = np.load(npz_path)
+        for i in case_indices:
+            key = str(int(i))
+            if key in bag.files:
+                out[int(i)] = np.asarray(bag[key], dtype=np.float32)
+                LOG.info("nnInteractive #%s loaded from cache voxels=%d", i, int((out[int(i)] > 0.5).sum()))
+    missing = [i for i in case_indices if int(i) not in out]
+    if not missing:
+        return out
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            f"nnInteractive needs CUDA for cases {missing}; "
+            f"cached preds only for {sorted(out)} ({npz_path})"
+        )
+
+    bn = _load_scripts_pyc("scripts.benchmark_nninteractive")
+    _load_scripts_pyc("scripts.setting")
+    try:
+        btf = _load_scripts_pyc("scripts.benchmark_test_foundation")
+        normalize_inpaint_data_cfg = btf.normalize_inpaint_data_cfg
+    except Exception:
+        normalize_inpaint_data_cfg = None
+    load_yaml_config = _load_scripts_pyc("scripts.setting").load_yaml_config
 
     cfg = load_yaml_config(CNET / "configs/benchmark_healthy_fp_random_boxes.yaml")
-    data_cfg = normalize_inpaint_data_cfg(cfg)
+    try:
+        data_cfg = normalize_inpaint_data_cfg(cfg) if normalize_inpaint_data_cfg else dict(cfg.get("data", {}))
+    except Exception:
+        data_cfg = dict(cfg.get("data", {}))
+    if "positive_patch_cache" not in data_cfg:
+        data_cfg["positive_patch_cache"] = str(
+            CNET / "runs/diffusion/healthy_patches_cache_test.pt"
+        )
     cache_path = Path(data_cfg["positive_patch_cache"])
     if not cache_path.is_absolute():
-        cache_path = (ROOT / cache_path).resolve()
+        # Prefer ControlNet_Diffusion-relative paths, then repo root.
+        cand = (CNET / cache_path).resolve()
+        cache_path = cand if cand.is_file() else (ROOT / cache_path).resolve()
         data_cfg["positive_patch_cache"] = str(cache_path)
 
-    boxes_path = Path(cfg["random_boxes_json"])
+    boxes_path = Path(cfg.get("random_boxes_json", CNET / "runs/benchmark_healthy_fp_random_boxes/random_boxes.json"))
     if not boxes_path.is_absolute():
-        boxes_path = (ROOT / boxes_path).resolve()
+        cand = (CNET / boxes_path).resolve()
+        boxes_path = cand if cand.is_file() else (ROOT / boxes_path).resolve()
     by_idx = {
         int(b["patch_index"]): b
         for b in json.loads(boxes_path.read_text())["boxes"]
@@ -627,7 +912,7 @@ def _run_nni_healthy(case_indices: list[int]) -> dict[int, np.ndarray]:
     LOG.info("Loading healthy cache for nnInteractive prompt injection …")
     samples = torch.load(cache_path, map_location="cpu", weights_only=False)
     prompt_by_idx: dict[int, dict] = {}
-    for i in case_indices:
+    for i in missing:
         s = dict(samples[int(i)])
         rec = by_idx[int(i)]
         shape = tuple(int(x) for x in s["hu"].shape)
@@ -640,11 +925,11 @@ def _run_nni_healthy(case_indices: list[int]) -> dict[int, np.ndarray]:
     def _load_sample(cfg_unused, sample_index=None):  # noqa: ARG001
         return prompt_by_idx[int(sample_index)]
 
-    prepare_nninteractive_model()
-    session = load_nninteractive_session(device="cuda")
-    LOG.info("Running nnInteractive on cases %s", case_indices)
-    results = run_nninteractive_on_cases(
-        case_indices,
+    bn.prepare_nninteractive_model()
+    session = bn.load_nninteractive_session(device="cuda")
+    LOG.info("Running nnInteractive on cases %s", missing)
+    results = bn.run_nninteractive_on_cases(
+        missing,
         data_cfg,
         session,
         hu_min=float(cfg.get("hu_min", -1000)),
@@ -654,12 +939,19 @@ def _run_nni_healthy(case_indices: list[int]) -> dict[int, np.ndarray]:
         prompt_mode="strategy4_slice_bbox",
         load_sample_fn=_load_sample,
     )
-    out: dict[int, np.ndarray] = {}
     for case in results:
         idx = int(case["index"])
         pred = np.asarray(case["pred"], dtype=np.float32)
         out[idx] = pred
         LOG.info("nnInteractive #%s voxels=%d", idx, int((pred > 0.5).sum()))
+    # Merge into on-disk cache for later GPU-less redraws.
+    merged = {str(k): np.asarray(v, dtype=np.float32) for k, v in out.items()}
+    if npz_path.is_file():
+        old = np.load(npz_path)
+        for k in old.files:
+            merged.setdefault(k, np.asarray(old[k], dtype=np.float32))
+    np.savez_compressed(npz_path, **merged)
+    LOG.info("Wrote nnInteractive cache %s (%d cases)", npz_path, len(merged))
     return out
 
 
@@ -712,7 +1004,11 @@ def run_healthy_compose() -> None:
         case_ids = viz_indices[:4]
     LOG.info("healthy paper cases: %s", case_ids)
 
-    nni_preds = _run_nni_healthy(case_ids)
+    try:
+        nni_preds = _run_nni_healthy(case_ids)
+    except Exception as exc:  # noqa: BLE001
+        LOG.warning("nnInteractive healthy re-infer failed (%s); cropping gallery columns", exc)
+        nni_preds = {}
 
     # Load HU + prompt boxes for redrawing the nnInteractive column.
     boxes = {
@@ -736,46 +1032,121 @@ def run_healthy_compose() -> None:
         "SAM-Med3D",
         "SegVol",
         "VISTA3D",
-        "Ours (60-step, R=3)*",
+        "Ours",
     ]
-    fig, axes = plt.subplots(len(case_ids), 7, figsize=(1.7 * 7, 1.7 * len(case_ids)), squeeze=False)
-    for r, idx in enumerate(case_ids):
+    from PIL import Image as _PILImage
+
+    def _gray_from_hu(hu_vol: np.ndarray, z: int) -> np.ndarray:
+        sl = hu_vol[z]
+        if float(np.asarray(hu_vol).max()) <= 1.5:
+            g = np.clip(sl, 0, 1)
+            if DISPLAY_GAMMA != 1.0:
+                g = np.power(g, float(DISPLAY_GAMMA))
+            return g
+        return _gray(sl)
+
+    def _panel_with_prompt_and_pred(gray: np.ndarray, prompt2d, pred2d) -> np.ndarray:
+        """CT + optional green-filled pred + yellow prompt contour."""
+        fig_t, ax_t = plt.subplots(figsize=(2.56, 2.56), dpi=100)
+        ax_t.imshow(gray, cmap="gray", vmin=0, vmax=1, aspect="equal")
+        if pred2d is not None:
+            arr = np.asarray(pred2d, dtype=float)
+            if arr.ndim > 2:
+                arr = np.squeeze(arr)
+            if arr.size and float(np.nanmax(arr)) > 0:
+                mask = arr > 0.5
+                if mask.any():
+                    overlay = np.zeros((*mask.shape, 4), dtype=np.float32)
+                    overlay[mask] = (0.15, 0.95, 0.15, 0.50)
+                    ax_t.imshow(overlay, interpolation="nearest", aspect="equal")
+                    _contour(ax_t, arr, "lime", 1.35)
+        if prompt2d is not None:
+            _contour(ax_t, prompt2d, "yellow", 1.25)
+        ax_t.set_axis_off()
+        fig_t.subplots_adjust(0, 0, 1, 1)
+        fig_t.canvas.draw()
+        tile = np.ascontiguousarray(np.asarray(fig_t.canvas.buffer_rgba())[..., :3])
+        plt.close(fig_t)
+        return tile
+
+    panels: list[list[np.ndarray]] = []
+    panel_px = 256
+    for idx in case_ids:
         ri = idx_to_row[idx]
         y0, y1 = rsegs[ri]
+        sample = samples[idx]
+        hu = np.asarray(sample["hu"], dtype=np.float32)
+        if "per_case" in meta and str(idx) in meta["per_case"]:
+            z = int(meta["per_case"][str(idx)]["z"])
+        else:
+            z = _mid_box_z(boxes[idx]["bbox_zyx"])
+        gray64 = _gray_from_hu(hu, z)
+        # Upsample CT to gallery resolution so recovered contours stay intact.
+        gray = np.asarray(
+            _PILImage.fromarray((np.clip(gray64, 0, 1) * 255).astype(np.uint8)).resize(
+                (panel_px, panel_px), _PILImage.BILINEAR
+            ),
+            dtype=np.float32,
+        ) / 255.0
+        prompt64 = _bbox_to_mask(hu.shape, boxes[idx]["bbox_zyx"])[z]
+        prompt2d = np.asarray(
+            _PILImage.fromarray((prompt64 > 0.5).astype(np.uint8) * 255).resize(
+                (panel_px, panel_px), _PILImage.NEAREST
+            )
+        ) > 127
+        row = []
+        src_info = []
         for c, ci in enumerate(src_cols):
-            ax = axes[r, c]
-            if c == nni_paper_col:
-                sample = samples[idx]
-                hu = np.asarray(sample["hu"], dtype=np.float32)
-                z = _mid_box_z(boxes[idx]["bbox_zyx"])
-                # Healthy cache HU is usually normalized to ~[0, 1].
-                if float(hu.max()) <= 1.5:
-                    gray = np.clip(hu[z], 0, 1)
-                    if DISPLAY_GAMMA != 1.0:
-                        gray = np.power(gray, float(DISPLAY_GAMMA))
-                else:
-                    gray = _gray(hu[z])
-                ax.imshow(gray, cmap="gray", vmin=0, vmax=1)
-                prompt = _bbox_to_mask(hu.shape, boxes[idx]["bbox_zyx"])
-                _contour(ax, prompt[z], "yellow", 1.1)
-                pred = nni_preds.get(idx)
-                if pred is not None:
-                    _contour(ax, np.asarray(pred)[z], "lime", 1.45)
-                else:
-                    LOG.warning("Missing nnInteractive pred for #%s", idx)
+            x0, x1 = csegs[ci]
+            gallery = np.asarray(
+                _PILImage.fromarray(im[y0:y1, x0:x1]).resize(
+                    (panel_px, panel_px), _PILImage.BILINEAR
+                )
+            )
+            if c == 0:
+                # Prompt column: yellow contour only (no fill overlay).
+                fig_t, ax_t = plt.subplots(figsize=(2.56, 2.56), dpi=100)
+                ax_t.imshow(gray, cmap="gray", vmin=0, vmax=1, aspect="equal")
+                _contour(ax_t, prompt2d.astype(np.float32), "yellow", 1.35)
+                ax_t.set_axis_off()
+                fig_t.subplots_adjust(0, 0, 1, 1)
+                fig_t.canvas.draw()
+                tile = np.ascontiguousarray(np.asarray(fig_t.canvas.buffer_rgba())[..., :3])
+                plt.close(fig_t)
+                src_info.append("prompt")
             else:
-                x0, x1 = csegs[ci]
-                ax.imshow(im[y0:y1, x0:x1])
-            _style(ax, labels[c] if r == 0 else "")
-    fig.suptitle(
-        "Healthy FP — yellow=prompt, lime=prediction (GT empty)\n"
-        "*Gallery Ours was 60-step R=1; table reports R=3 (same checkpoint family).",
-        fontweight="bold",
-        fontsize=10,
-        y=1.02,
+                pred2d = None
+                if c == nni_paper_col and idx in nni_preds:
+                    pred64 = np.asarray(nni_preds[idx])[z] > 0.5
+                    pred2d = np.asarray(
+                        _PILImage.fromarray(pred64.astype(np.uint8) * 255).resize(
+                            (panel_px, panel_px), _PILImage.NEAREST
+                        )
+                    ) > 127
+                    src_info.append(f"nni:{int(pred2d.sum())}")
+                else:
+                    pred_mask = _mask_from_color_contours(gallery, mode="lime")
+                    if pred_mask.any():
+                        pred2d = pred_mask
+                        src_info.append(f"gallery:{int(pred_mask.sum())}")
+                    else:
+                        src_info.append("none")
+                tile = _panel_with_prompt_and_pred(
+                    gray,
+                    prompt2d.astype(np.float32),
+                    None if pred2d is None else pred2d.astype(np.float32),
+                )
+            row.append(tile)
+        panels.append(row)
+        LOG.info("healthy #%s z=%d overlay=%s", idx, z, dict(zip(labels, src_info)))
+    _compose_mosaic(
+        panels,
+        labels,
+        "Healthy FP — yellow=prompt contour, green=prediction fill (GT empty)",
+        col_gap=2,
+        row_gap=6,
+        stem="fig_qual_healthy_fp",
     )
-    fig.tight_layout()
-    save_fig(fig, "fig_qual_healthy_fp")
 
 
 def _nsclc_extract_patch(vol: np.ndarray, center) -> np.ndarray | None:
@@ -810,14 +1181,14 @@ def run_nsclc() -> None:
         ("SAM-Med3D", "seg_sam_med3d"),
         ("SegVol", "seg_segvol"),
         ("VISTA3D", "seg_vista3d"),
-        ("Ours (60-step, R=1)", "seg_ours"),
+        ("Ours", "seg_ours"),
     ]
 
+    method_labels = [t for t, _ in methods]
+
     # ---- Volume-wise (full axial / best-axis slice) ----
-    fig, axes = plt.subplots(
-        len(NSCLC_PATIENTS), len(methods), figsize=(1.8 * len(methods), 1.8 * len(NSCLC_PATIENTS)), squeeze=False
-    )
-    for r, pid in enumerate(NSCLC_PATIENTS):
+    panels_vol: list[list[np.ndarray]] = []
+    for pid in NSCLC_PATIENTS:
         ct = np.asanyarray(nib.load(str(base / "processed_ct" / f"{pid}.nii.gz")).dataobj).astype(np.float32)
         gt = np.asanyarray(nib.load(str(base / "processed_gtv" / f"{pid}.nii.gz")).dataobj) > 0.5
         profiles = [gt.sum(axis=tuple(i for i in range(3) if i != ax)) for ax in range(3)]
@@ -825,21 +1196,26 @@ def run_nsclc() -> None:
         z = int(np.argmax(profiles[slice_axis]))
         sl = np.take(ct, z, axis=slice_axis)
         g2 = np.take(gt, z, axis=slice_axis)
-        gray = _gray(sl)
-        for c, (title, folder) in enumerate(methods):
-            ax = axes[r, c]
-            ax.imshow(np.rot90(gray), cmap="gray", vmin=0, vmax=1)
+        gray = np.rot90(_gray(sl))
+        gt2 = np.rot90(g2)
+        row = []
+        for _title, folder in methods:
+            pred2 = None
             if folder is not None:
                 pred = np.asanyarray(nib.load(str(base / folder / f"{pid}.nii.gz")).dataobj) > 0.5
                 if pred.shape != gt.shape and pred.T.shape == gt.shape:
                     pred = pred.T
-                p2 = np.take(pred, z, axis=slice_axis)
-                _contour(ax, np.rot90(p2), "lime", 1.45)
-            _contour(ax, np.rot90(g2), "red", 1.15)
-            _style(ax, title if r == 0 else "")
-    fig.suptitle("NSCLC-Radiomics (volume) — red=GT, lime=prediction", fontweight="bold", fontsize=11, y=1.01)
-    fig.tight_layout()
-    save_fig(fig, "fig_qual_nsclc_volume")
+                pred2 = np.rot90(np.take(pred, z, axis=slice_axis))
+            row.append(_render_overlay_rgb(gray, pred=pred2, gt=gt2))
+        panels_vol.append(row)
+    _compose_mosaic(
+        panels_vol,
+        method_labels,
+        "NSCLC-Radiomics (volume) — red=GT, lime=prediction",
+        col_gap=2,
+        row_gap=6,
+        stem="fig_qual_nsclc_volume",
+    )
 
     # ---- Patch-wise 64³ (same visual language as LIDC / MAISI) ----
     cache_path = CNET / "runs/nsclc/positive_patches_cache_test.pt"
@@ -860,47 +1236,42 @@ def run_nsclc() -> None:
             vol_cache[key] = arr.astype(np.float32) if folder == "__ct__" else (arr > 0.5)
         return vol_cache[key]
 
-    fig, axes = plt.subplots(
-        len(NSCLC_PATCHES), len(methods), figsize=(1.65 * len(methods), 1.65 * len(NSCLC_PATCHES)), squeeze=False
-    )
-    for r, (pid, pidx) in enumerate(zip(NSCLC_PATIENTS, NSCLC_PATCHES)):
+    panels_p: list[list[np.ndarray]] = []
+    for pid, pidx in zip(NSCLC_PATIENTS, NSCLC_PATCHES):
         sample = cache[int(pidx)]
         if str(sample.get("patient_id")) != pid:
             LOG.warning("NSCLC patch %s patient_id=%s (expected %s)", pidx, sample.get("patient_id"), pid)
         center = sample["center"]
         hu = np.asarray(sample["hu"], dtype=np.float32)
-        # Cache is normalized [0,1] ← HU window [-1000,400]
         hu_hu = hu * 1400.0 - 1000.0 if float(hu.max()) <= 1.5 else hu
         nod = np.asarray(sample["nodule"]) > 0.5
         z = int(np.argmax(nod.sum(axis=(1, 2))))
         gray = _gray(hu_hu[z])
-        # Sanity: volume GT crop should match cache nodule
         gtc = _nsclc_extract_patch(_vol(pid, None), center)
         if gtc is not None:
             dice_gt = 2.0 * float((gtc & nod).sum()) / max(1.0, float(gtc.sum() + nod.sum()))
             if dice_gt < 0.99:
                 LOG.warning("NSCLC patch #%s GT align dice=%.3f", pidx, dice_gt)
-        for c, (title, folder) in enumerate(methods):
-            ax = axes[r, c]
-            ax.imshow(gray, cmap="gray", vmin=0, vmax=1)
+        row = []
+        for _title, folder in methods:
+            pred2 = None
             if folder is not None:
-                pred_vol = _vol(pid, folder)
-                pred = _nsclc_extract_patch(pred_vol, center)
+                pred = _nsclc_extract_patch(_vol(pid, folder), center)
                 if pred is None:
                     LOG.warning("NSCLC patch crop failed %s %s", pid, folder)
                 else:
-                    _contour(ax, pred[z], "lime", 1.45)
-            _contour(ax, nod[z], "red", 1.15)
-            _style(ax, title if r == 0 else "")
+                    pred2 = pred[z]
+            row.append(_render_overlay_rgb(gray, pred=pred2, gt=nod[z]))
+        panels_p.append(row)
         LOG.info("NSCLC patch row %s #%s z=%d nodule_vox=%d", pid, pidx, z, int(nod.sum()))
-    fig.suptitle(
+    _compose_mosaic(
+        panels_p,
+        method_labels,
         "NSCLC-Radiomics (64³ patches) — red=GT, lime=prediction",
-        fontweight="bold",
-        fontsize=11,
-        y=1.01,
+        col_gap=2,
+        row_gap=6,
+        stem="fig_qual_nsclc",
     )
-    fig.tight_layout()
-    save_fig(fig, "fig_qual_nsclc")
 
 
 def main():
