@@ -432,25 +432,32 @@ No morphological open~/~close post-processing is applied in the default method.
 \caption{Iterative residual mask refinement for nodule localization}
 \label{alg:refine}
 \begin{algorithmic}[1]
-\Require CT patch \(\mathbf{x}_0\), initial hole \(\mathbf{h}^{(0)}\),
-         RF inpainter \(\mathcal{G}_\theta\), rounds \(R\), threshold \(\tau\),
-         dilation \(\rho\), min.\ voxels \(\eta\)
-\Ensure Predicted nodule mask \(\hat{\mathbf{y}}\)
+\Require \(\mathbf{x}_0\), \(\mathbf{h}^{(0)}\), \(\mathcal{G}_\theta\),
+\(R\), \(\tau\), \(\rho\), \(\eta\)
+\Ensure \(\hat{\mathbf{y}}\)
 \For{\(r = 0,\dots,R\)}
-    \State \(\hat{\mathbf{x}}^{(r)}
-            \gets \mathcal{G}_\theta\!\bigl(\mathbf{x}_0,\,\mathbf{m}{=}1{-}\mathbf{h}^{(r)}\bigr)
-            \)
-            \Comment{Eq.~\eqref{eq:inject}}
-    \If{\(r = R\)}
-        \State \textbf{break}
-    \EndIf
-    \State \(\mathbf{d}^{(r)} \gets |\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}|\)
-    \State \(\mathbf{s} \gets \mathrm{Dilate}(\mathbf{h}^{(r)};\,\rho)\)
-    \State \(\mathbf{h}' \gets \mathbb{1}[\mathbf{d}^{(r)} > \tau]\odot\mathbf{s}\)
-    \State \(\mathbf{h}^{(r+1)} \gets
-            \mathbf{h}'\) if \(|\mathbf{h}'|_0 \ge \eta\), else \(\mathbf{h}^{(r)}\)
+\State \(\hat{\mathbf{x}}^{(r)} \gets
+  \mathcal{G}_\theta(\mathbf{x}_0,\,
+  \mathbf{m}{=}1{-}\mathbf{h}^{(r)})\)
+  \hfill\Comment{Eq.~\eqref{eq:inject}}
+\If{\(r = R\)}
+\State \textbf{break}
+\EndIf
+\State \(\mathbf{d}^{(r)} \gets
+  |\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}|\)
+  \hfill\Comment{Eq.~\eqref{eq:residual}}
+\State \(\mathbf{s} \gets
+  \mathrm{Dilate}(\mathbf{h}^{(r)};\,\rho)\)
+\State \(\mathbf{h}' \gets
+  \mathbb{1}[\mathbf{d}^{(r)} > \tau] \odot \mathbf{s}\)
+  \hfill\Comment{Eq.~\eqref{eq:update}}
+\If{\(|\mathbf{h}'|_0 \ge \eta\)}
+\State \(\mathbf{h}^{(r+1)} \gets \mathbf{h}'\)
+\Else
+\State \(\mathbf{h}^{(r+1)} \gets \mathbf{h}^{(r)}\)
+\EndIf
 \EndFor
-\State \Return \(\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}\)
+\State \textbf{return} \(\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}\)
 \end{algorithmic}
 \end{algorithm}
 
