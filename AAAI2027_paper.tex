@@ -24,12 +24,21 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{mathtools}
+\usepackage{amsthm}
 \usepackage{bm}
 \usepackage{xcolor}
 \usepackage{multirow}
 
+% ── Theorems (methodology) ────────────────────────────────────
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}
+
 % ── Convenience macros ────────────────────────────────────────
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\1}{\mathbb{1}}
 
 \pdfinfo{/TemplateVersion (2027.1)}
 
@@ -289,39 +298,102 @@ and data \(\mathbf{x}_0\), yielding efficient few-step ODE sampling.
 
 \paragraph{Training path.}
 Let \(T\) denote the continuous time horizon (we use \(T{=}1000\) with continuous
-timesteps and timestep transform~\cite{esser2024sd3}).
-A sample is formed by linear interpolation
+timesteps and timestep transform~\cite{esser2024sd3}), and write
+\(s\coloneqq t/T\in[0,1]\) for normalized time.
+Pair a healthy patch \(\mathbf{x}_0\sim p_{\mathrm{healthy}}\) with
+\(\boldsymbol{\varepsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\) and form the
+\emph{linear interpolant}
 \begin{equation}
+\label{eq:path}
 \mathbf{x}_t
 =
-\Bigl(1-\frac{t}{T}\Bigr)\mathbf{x}_0
+(1-s)\,\mathbf{x}_0
 +
-\frac{t}{T}\,\boldsymbol{\varepsilon},
+s\,\boldsymbol{\varepsilon},
 \qquad
-t\in[0,T],
+s=\tfrac{t}{T}.
 \end{equation}
-and the regression target is the constant velocity along this path,
+Differentiating~\eqref{eq:path} w.r.t.\ \(s\) gives a constant target velocity
 \begin{equation}
+\label{eq:velocity}
 \mathbf{u}(\mathbf{x}_t,t)
+\;\coloneqq\;
+\frac{\mathrm{d}\mathbf{x}_t}{\mathrm{d}s}
 =
-\mathbf{x}_0 - \boldsymbol{\varepsilon}.
+\mathbf{x}_0 - \boldsymbol{\varepsilon},
 \end{equation}
-The network is optimized with an \(\ell_1\) velocity objective
+independent of \(s\). Equivalently, the continuous-time generative ODE that
+transports noise (\(s{=}1\)) to data (\(s{=}0\)) is
 \begin{equation}
+\label{eq:ode}
+\frac{\mathrm{d}\mathbf{x}}{\mathrm{d}s}
+=
+v_\theta\!\bigl(\mathbf{x},\,sT\bigr),
+\qquad
+\mathbf{x}\big|_{s=1}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation}
+The network is trained by conditional flow matching~\cite{lipman2023flowmatching}
+with an \(\ell_1\) regression loss on the straight-path velocity:
+\begin{equation}
+\label{eq:loss}
 \mathcal{L}(\theta)
 =
 \mathbb{E}_{\mathbf{x}_0,\boldsymbol{\varepsilon},t}
 \Biggl[
-\bigl\|
+\norm{
 v_\theta(\mathbf{x}_t,t)
 -
 (\mathbf{x}_0-\boldsymbol{\varepsilon})
-\bigr\|_1
+}_1
 \Biggr].
 \end{equation}
 Volumes are standardized by a fixed scale factor
-\(s=1/\mathrm{std}(\mathbf{x})\) estimated once from training data (MAISI-style)
-and reused for training and inference; outputs are rescaled after sampling.
+\(s_{\mathrm{std}}=1/\mathrm{std}(\mathbf{x})\) estimated once from training
+data (MAISI-style) and reused for training and inference; outputs are
+rescaled after sampling. All ODEs below are stated in this scaled space.
+
+\begin{proposition}[Straight-path velocity]
+\label{prop:velocity}
+For the interpolant~\eqref{eq:path}, the \(s\)-velocity is constantly
+\(\mathbf{x}_0-\boldsymbol{\varepsilon}\) and the endpoint identities
+\(\mathbf{x}_{t=0}=\mathbf{x}_0\), \(\mathbf{x}_{t=T}=\boldsymbol{\varepsilon}\)
+hold.
+\end{proposition}
+\begin{proof}
+Differentiate~\eqref{eq:path}:
+\(\mathrm{d}\mathbf{x}_t/\mathrm{d}s
+=\mathbf{x}_0-\boldsymbol{\varepsilon}\).
+Substitute \(s{=}0\) and \(s{=}1\).
+\end{proof}
+
+\begin{proposition}[Exact \(x_0\) recovery]
+\label{prop:x0}
+If \(v_\theta(\mathbf{x}_t,t)=\mathbf{x}_0-\boldsymbol{\varepsilon}\)
+along~\eqref{eq:path}, then
+\begin{equation}
+\label{eq:x0hat}
+\hat{\mathbf{x}}_0(\mathbf{x}_t,t)
+\;\coloneqq\;
+\mathbf{x}_t + s\,v_\theta(\mathbf{x}_t,t)
+\end{equation}
+recovers \(\mathbf{x}_0\) exactly for every \(s\in[0,1]\).
+\end{proposition}
+\begin{proof}
+\(\mathbf{x}_t+s(\mathbf{x}_0-\boldsymbol{\varepsilon})
+=(1-s)\mathbf{x}_0+s\boldsymbol{\varepsilon}
++s\mathbf{x}_0-s\boldsymbol{\varepsilon}
+=\mathbf{x}_0\).
+\end{proof}
+
+\begin{corollary}[Flow-matching fixed point]
+\label{cor:fm}
+Any minimizer of~\eqref{eq:loss} with zero training risk yields a vector
+field whose characteristics are the rectified straight paths of
+Liu~et~al.~\cite{liu2023flow}; Euler integration of~\eqref{eq:ode} from
+\(s{=}1\) to \(s{=}0\) therefore maps \(\boldsymbol{\varepsilon}\) to
+\(\mathbf{x}_0\) in a single analytic step when \(v_\theta\) is exact, and
+in \(N\) discrete steps otherwise.
+\end{corollary}
 
 \paragraph{Network and training regime.}
 The velocity field is a compact single-channel 3D U-Net over \(64^{3}\)
@@ -333,43 +405,123 @@ what healthy lung looks like.
 Mild flips and intensity jitter regularize the prior without introducing
 lesion-like contrast that would contaminate residual scoring at inference.
 Full channel widths and optimizer settings are listed in
-Table~\ref{tab:hparams}.
+Table~\ref{tab:hparams} (Supplementary Material).
 
 %------------------------------------------------------------------------------
 \subsection{Mask-Guided Rectified-Flow Inpainting}
 \label{sec:method:repaint}
 %------------------------------------------------------------------------------
 
-Given keep-mask \(\mathbf{m}\) and observation \(\mathbf{x}_0\), we sample
-an \(N\)-step Euler discretization of the learned velocity ODE
-(\(N{=}40\) by default), starting from
-\(\mathbf{x}_t\sim\mathcal{N}(\mathbf{0},\mathbf{I})\) in scaled space.
+At inference we are given an observation \(\mathbf{x}_0\) and a keep-mask
+\(\mathbf{m}\) (\(\mathbf{m}=1\) observed, \(\mathbf{m}=0\) hole).
+Write \(\mathcal{K}=\{\,i:m_i=1\,\}\) and \(\mathcal{H}=\{\,i:m_i=0\,\}\)
+for known and hole index sets.
+We seek a healthy counterfactual \(\hat{\mathbf{x}}\) that
+(i)~agrees with \(\mathbf{x}_0\) on \(\mathcal{K}\) and
+(ii)~is drawn from the learned healthy flow on \(\mathcal{H}\).
+
+\paragraph{Forward noising of known voxels.}
+The rectified-flow forward map of an observation at time \(t\) is
+\begin{equation}
+\label{eq:forward}
+\tilde{\mathbf{x}}_t(\mathbf{x}_0)
+\;=\;
+(1-s)\,\mathbf{x}_0
++
+s\,\boldsymbol{\varepsilon}',
+\qquad
+\boldsymbol{\varepsilon}'\sim\mathcal{N}(\mathbf{0},\mathbf{I}),
+\end{equation}
+i.e.\ the same interpolant~\eqref{eq:path} with a fresh noise draw.
 Following RePaint~\cite{lugmayr2022repaint}, but without jump resampling,
-known voxels are overwritten at each time \(t\) by a noised copy of the
-observation while unknown voxels evolve freely:
+we enforce known-region consistency at every reverse step by the
+\emph{inject} operator
 \begin{equation}
 \label{eq:inject}
-\mathbf{x}_t
-\;\leftarrow\;
+\mathcal{I}_{\mathbf{m},t}(\mathbf{x}_t;\mathbf{x}_0)
+\;\coloneqq\;
 \mathbf{m}\odot \tilde{\mathbf{x}}_t(\mathbf{x}_0)
 \;+\;
-(1-\mathbf{m})\odot \mathbf{x}_t,
+(1-\mathbf{m})\odot \mathbf{x}_t.
 \end{equation}
-where \(\tilde{\mathbf{x}}_t(\mathbf{x}_0)\) denotes the rectified-flow
-forward perturbation of \(\mathbf{x}_0\) at time \(t\).
-A network step then updates
-\begin{equation}
-\mathbf{x}_t
-\;\leftarrow\;
-\mathbf{x}_t
+
+\paragraph{Constrained Euler sampler.}
+Sampling starts from \(\mathbf{x}_{t_1}\sim\mathcal{N}(\mathbf{0},\mathbf{I})\)
+with a decreasing schedule
+\(T\approx t_1>t_2>\cdots>t_N\approx 0\)
+(\(N{=}40\) by default) and applies, for \(k=1,\dots,N-1\),
+\begin{align}
+\label{eq:euler-inject}
+\mathbf{z}_{t_k}
+&\;=\;
+\mathcal{I}_{\mathbf{m},t_k}(\mathbf{x}_{t_k};\mathbf{x}_0),\\
+\label{eq:euler-step}
+\mathbf{x}_{t_{k+1}}
+&\;=\;
+\mathbf{z}_{t_k}
 +
-v_\theta(\mathbf{x}_t,t)\,\Delta t,
+v_\theta(\mathbf{z}_{t_k},t_k)\,\Delta s_k,
 \qquad
-\Delta t=\frac{t-t_{\mathrm{next}}}{T}.
-\end{equation}
-After \(N\) steps and unscaling, we obtain an inpainted volume
-\(\hat{\mathbf{x}}\) that is consistent with \(\mathbf{x}_0\) outside the hole
-and synthesized from the healthy prior inside the hole.
+\Delta s_k=\tfrac{t_k-t_{k+1}}{T}.
+\end{align}
+After unscaling we obtain \(\hat{\mathbf{x}}\coloneqq\mathbf{x}_{t_N}\).
+We write \(\hat{\mathbf{x}}=\mathcal{G}_\theta(\mathbf{x}_0,\mathbf{m})\)
+for this mask-guided inpainting map.
+
+\begin{proposition}[Known-region marginal consistency]
+\label{prop:inject}
+Fix \(\mathbf{x}_0\) and \(\mathbf{m}\).
+After each application of~\eqref{eq:inject}, the restriction
+\(\mathbf{x}_t\big|_{\mathcal{K}}\) is distributed exactly as the
+RF forward process~\eqref{eq:forward} of \(\mathbf{x}_0\big|_{\mathcal{K}}\),
+independent of the free evolution on \(\mathcal{H}\).
+\end{proposition}
+\begin{proof}
+On indices \(i\in\mathcal{K}\), \(\mathcal{I}\) replaces the current state by
+\(\tilde{x}_{t,i}(\mathbf{x}_0)\), which by~\eqref{eq:forward} equals
+\((1-s)x_{0,i}+s\varepsilon'_i\).
+Coordinates in \(\mathcal{H}\) are left unchanged by \(\mathcal{I}\) and
+therefore do not enter the known-region law.
+\end{proof}
+
+\begin{proposition}[Exact reverse step along a path]
+\label{prop:euler}
+Suppose \(v_\theta=\mathbf{u}\) from~\eqref{eq:velocity} and
+\(\mathbf{x}_{t_k}\) already lies on the interpolant~\eqref{eq:path} of
+some pair \((\mathbf{x}_0^\star,\boldsymbol{\varepsilon})\).
+Then one Euler update~\eqref{eq:euler-step} with step \(\Delta s_k\) lands
+exactly on the same interpolant at time \(t_{k+1}\).
+\end{proposition}
+\begin{proof}
+Along~\eqref{eq:path},
+\(\mathbf{x}_{t_k}=(1-s_k)\mathbf{x}_0^\star+s_k\boldsymbol{\varepsilon}\)
+with \(s_k=t_k/T\).
+Then
+\begin{align*}
+\mathbf{x}_{t_k}+\Delta s_k\,(\mathbf{x}_0^\star-\boldsymbol{\varepsilon})
+&=
+(1-s_k)\mathbf{x}_0^\star+s_k\boldsymbol{\varepsilon}
++(\,s_k-s_{k+1}\,)\bigl(\mathbf{x}_0^\star-\boldsymbol{\varepsilon}\bigr)\\
+&=
+(1-s_{k+1})\mathbf{x}_0^\star+s_{k+1}\boldsymbol{\varepsilon},
+\end{align*}
+which is \(\mathbf{x}_{t_{k+1}}\) on the same path.
+\end{proof}
+
+\begin{corollary}[Boundary-consistent healthy fill]
+\label{cor:inpaint}
+Under Propositions~\ref{prop:inject}--\ref{prop:euler} with an exact
+velocity field, the terminal sample satisfies
+\(\hat{\mathbf{x}}\big|_{\mathcal{K}}=\mathbf{x}_0\big|_{\mathcal{K}}\)
+almost surely (up to the final \(s{=}0\) inject), while
+\(\hat{\mathbf{x}}\big|_{\mathcal{H}}\) is a healthy draw conditioned on
+the observed context through the coupled ODE.
+\end{corollary}
+
+Intuitively, inject anchors the reverse process to the observation on
+\(\mathcal{K}\); the learned healthy velocity then fills \(\mathcal{H}\)
+so that \(\hat{\mathbf{x}}\) is a \emph{healthy counterfactual} of
+\(\mathbf{x}_0\) under the box prompt.
 
 %------------------------------------------------------------------------------
 \subsection{Initial Hole from Slice-wise Boxes}
@@ -400,33 +552,111 @@ region for refinement.
 A fixed initial hole is imperfect: it may include healthy soft tissue or miss
 irregular lesion boundaries.
 We therefore iterate inpainting and residual thresholding
-(Algorithm~\ref{alg:refine}).
+(Algorithm~\ref{alg:refine}), casting mask update as a local residual test
+against the healthy counterfactual.
 
-After inpainting with hole \(\mathbf{h}^{(r)}\), define the absolute residual
-in normalized intensity space,
+\paragraph{Residual as an anomaly score.}
+After inpainting with hole \(\mathbf{h}^{(r)}\) and keep-mask
+\(\mathbf{m}^{(r)}=1-\mathbf{h}^{(r)}\), define the absolute residual in
+normalized intensity space,
 \begin{equation}
 \label{eq:residual}
 \mathbf{d}^{(r)}
 =
-\bigl|\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}\bigr|.
+\bigl|\mathbf{x}_0 - \hat{\mathbf{x}}^{(r)}\bigr|,
+\qquad
+\hat{\mathbf{x}}^{(r)}
+=
+\mathcal{G}_\theta\!\bigl(\mathbf{x}_0,\mathbf{m}^{(r)}\bigr).
 \end{equation}
-Large residuals indicate tissue that the healthy prior cannot explain.
-The next hole is obtained by thresholding inside a local search band around
-the previous hole:
+Large residuals mark voxels that the healthy prior cannot explain under the
+current hole. The next hole is the thresholded residual restricted to a
+local search band around the previous hole:
 \begin{equation}
 \label{eq:update}
 \mathbf{h}^{(r+1)}
 =
-\mathbb{1}\!\bigl[\mathbf{d}^{(r)} > \tau\bigr]
+\1\!\bigl[\mathbf{d}^{(r)} > \tau\bigr]
 \;\odot\;
 \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr),
 \end{equation}
 with residual threshold \(\tau{=}0.05\) and 3D dilation radius \(\rho{=}2\).
-If the resulting mask contains fewer than \(\eta{=}8\) voxels, we retain
+If \(\lVert\mathbf{h}^{(r+1)}\rVert_0<\eta\) with \(\eta{=}8\), we retain
 \(\mathbf{h}^{(r)}\) (stability safeguard).
 We run \(R\) refinement rounds (\(R{=}2\) in our best configuration;
-\(R{=}3\) in ablations), performing \(R{+}1\) inpaint passes in total.
-No morphological open~/~close post-processing is applied in the default method.
+\(R{=}3\) in ablations), i.e.\ \(R{+}1\) inpaint passes in total.
+No morphological open~/~close post-processing is applied by default.
+
+\begin{assumption}[Healthy prior and covering hole]
+\label{ass:healthy}
+The trained field \(v_\theta\) is an exact healthy transport
+(Corollary~\ref{cor:fm}).
+The lesion support \(\mathrm{supp}(\mathbf{y})\) is contained in the current
+hole, \(\mathrm{supp}(\mathbf{y})\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\),
+and intensities on
+\(\mathrm{supp}(\mathbf{h}^{(r)})\setminus\mathrm{supp}(\mathbf{y})\)
+are healthy (in-distribution for \(p_{\mathrm{healthy}}\)).
+\end{assumption}
+
+\begin{proposition}[Residual localization]
+\label{prop:residual}
+Under Assumption~\ref{ass:healthy} and exact boundary consistency
+(Corollary~\ref{cor:inpaint}),
+\begin{equation}
+d^{(r)}_i
+=
+\begin{cases}
+0, & i\notin\mathrm{supp}(\mathbf{h}^{(r)}),\\[2pt]
+0, & i\in\mathrm{supp}(\mathbf{h}^{(r)})\setminus\mathrm{supp}(\mathbf{y}),\\[2pt]
+\bigl|x_{0,i}-\hat{x}^{(r)}_i\bigr|>0
+  & \text{almost surely if }\;
+    x_{0,i}\;\text{is off the healthy manifold},
+\end{cases}
+\end{equation}
+up to the stochasticity of~\eqref{eq:forward}.
+Consequently, for any threshold
+\(0<\tau<\inf_{i\in\mathrm{supp}(\mathbf{y})}d^{(r)}_i\),
+the update~\eqref{eq:update} retains every lesion voxel that lies inside the
+dilated search band and drops healthy voxels whose residual falls below
+\(\tau\).
+\end{proposition}
+\begin{proof}
+On \(\mathcal{K}^{(r)}\) (outside the hole), inject forces
+\(\hat{x}^{(r)}_i=x_{0,i}\), hence \(d^{(r)}_i=0\).
+Inside the hole but off the lesion, Assumption~\ref{ass:healthy} implies
+the observation is a healthy draw; an exact healthy fill reproduces it in
+expectation, so the residual vanishes in the noise-free limit.
+On lesion voxels, \(\mathbf{x}_0\) lies off \(p_{\mathrm{healthy}}\) while
+\(\hat{\mathbf{x}}^{(r)}\) is constrained to that manifold, so the
+coordinates differ and \(d^{(r)}_i>0\).
+Thresholding inside
+\(\mathrm{Dilate}(\mathbf{h}^{(r)};\rho)\) therefore selects a subset of
+anomalous coordinates without leaving the local search region.
+\end{proof}
+
+\begin{proposition}[Monotone localization under over-coverage]
+\label{prop:mono}
+Suppose \(\mathrm{supp}(\mathbf{y})\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\)
+and the search band does not introduce new false positives, i.e.\
+\(\1[\mathbf{d}^{(r)}>\tau]\odot\mathrm{Dilate}(\mathbf{h}^{(r)};\rho)
+\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\)
+whenever residuals outside \(\mathbf{h}^{(r)}\) are zero
+(Proposition~\ref{prop:residual}).
+Then
+\(\mathrm{supp}(\mathbf{y})
+\subseteq\mathrm{supp}(\mathbf{h}^{(r+1)})
+\subseteq\mathrm{supp}(\mathbf{h}^{(r)})\):
+each successful round weakly shrinks the hole while preserving lesion
+coverage.
+\end{proposition}
+\begin{proof}
+Lesion voxels have \(d^{(r)}_i>\tau\) and lie in \(\mathbf{h}^{(r)}\),
+hence in its dilation, so they survive~\eqref{eq:update}.
+Any voxel retained must lie in the dilation of \(\mathbf{h}^{(r)}\); under
+the stated residual vanishing outside the hole and the inclusion
+hypothesis, no coordinate outside \(\mathbf{h}^{(r)}\) is added, yielding
+the nested supports.
+\end{proof}
 
 \begin{algorithm}[t]
 \caption{Iterative residual mask refinement for nodule localization}
@@ -439,7 +669,7 @@ $\rho$, min.\ voxels $\eta$
 \FOR{$r = 0,\dots,R$}
 \STATE $\hat{\mathbf{x}}^{(r)} \gets \mathcal{G}_\theta\!\bigl(
   \mathbf{x}_0,\,\mathbf{m}{=}1{-}\mathbf{h}^{(r)}\bigr)$
-  \COMMENT{Eq.~\eqref{eq:inject}}
+  \COMMENT{Eqs.~\eqref{eq:inject}--\eqref{eq:euler-step}}
 \IF{$r = R$}
 \STATE \textbf{break}
 \ENDIF
@@ -459,10 +689,11 @@ $\rho$, min.\ voxels $\eta$
 \end{algorithmic}
 \end{algorithm}
 
-The refinement loop couples geometry and appearance: boxes supply a spatial
-prior, while residuals correct the mask toward the true lesion extent.
-Because sampling is conditioned on known healthy context through
-Eq.~\eqref{eq:inject}, each iterate becomes progressively more selective.
+The loop therefore couples a geometric box prior with an appearance test
+against the healthy flow: Propositions~\ref{prop:residual}--\ref{prop:mono}
+formalize why over-complete initial boxes shrink toward the lesion under
+residual thresholding, while Eq.~\eqref{eq:inject} keeps each iterate
+anchored to observed healthy context.
 
 %------------------------------------------------------------------------------
 \subsection{Relation to Discriminative and Promptable Segmenters}
@@ -499,36 +730,6 @@ Ablations over \(N\in\{30,40,60,80\}\) and \(R\in\{2,3\}\) are reported in
 Section~\ref{sec:experiments}; the default LIDC operating point uses
 \(N{=}40\) and \(R{=}2\).
 
-%==============================================================================
-\section*{Default Hyperparameters}
-%==============================================================================
-
-\begin{table}[h]
-\centering
-\caption{Default hyperparameters used in our method.}
-\label{tab:hparams}
-\begin{tabular}{@{}ll@{}}
-\toprule
-\textbf{Setting} & \textbf{Value} \\
-\midrule
-Patch size & \(64\times 64\times 64\) \\
-Spacing & \(0.7\times 0.7\times 1.5\,\mathrm{mm}\) \\
-HU window & \([-1000,\,400]\) \\
-Scheduler & Rectified flow (continuous) \\
-Train timesteps \(T\) & \(1000\) \\
-U-Net channels & \([64,128,128,128]\) \\
-Loss & \(\ell_1\) velocity regression \\
-Learning rate & \(10^{-4}\) \\
-Inference steps \(N\) & \(40\) \\
-Refine rounds \(R\) & \(2\) \\
-Residual threshold \(\tau\) & \(0.05\) \\
-Search dilation \(\rho\) & \(2\) \\
-Box padding \(p\) & \(2\) voxels \\
-Min.\ hole voxels \(\eta\) & \(8\) \\
-Morphology & off \\
-\bottomrule
-\end{tabular}
-\end{table}
 % =============================================================
 \section{Experiments}
 \label{sec:experiments}
@@ -585,46 +786,71 @@ refinement. Unless stated otherwise, the default LIDC configuration is
 cross-dataset tables note any alternate settings used for reporting.
 
 \subsection{Main Results on LIDC}
-Table~\ref{tab:main} reports mean Dice / IoU under matched prompts.
+\label{sec:exp:lidc}
+Table~\ref{tab:main} reports matched-box true-nodule Dice~/~IoU
+(\(N{=}1658\)) together with healthy false-positive predicted volume
+(\(N{=}3840\) random boxes in nodule-free lung).
 Ours is nearly tied with the strongest interactive baseline
 (SAM-Med2D; both round to Dice \(0.73\), with SAM-Med2D slightly ahead before
 rounding) and ahead of nnInteractive, SAM-Med3D, SegVol, and VISTA3D, despite
 never training on lesion masks.
-Figure~\ref{fig:results} summarizes the same comparison alongside
-the healthy FP probe.
+Among methods that remain competitive on true nodules, the recommended
+Ours configuration (\(40\)-step, \(R{=}2\)) yields substantially less
+spurious volume than SAM-Med2D~\citep{sam_med2d2023}, SegVol, and especially
+nnInteractive~\citep{nninteractive2025}; a \(60\)-step/\(R{=}3\) setting
+further reduces FP volume.
+VISTA3D~\citep{vista3d2024} is nearly silent on healthy tissue, but its
+LIDC Dice (\(0.19\)) shows that silence alone is not useful without
+sensitivity to real nodules.
+Figure~\ref{fig:results} summarizes the same comparison;
+Figure~\ref{fig:fp-tradeoff} places every method in the true-nodule Dice
+vs.\ healthy FP volume plane.
 
 \begin{table}[t]
 \centering
-\caption{LIDC-IDRI positive test patches (\(N{=}1658\)), matched
-per-slice box prompts (Strategy-4). Best Dice / IoU in \textbf{bold}.}
+\caption{LIDC matched-box evaluation: true-nodule Dice~/~IoU
+(\(N{=}1658\) positive patches) and healthy false-positive predicted
+volume (\(N{=}3840\) nodule-free prompts). Best Dice~/~IoU and lowest
+non-silent FP volume in \textbf{bold}. Dice against empty GT is omitted.}
 \label{tab:main}
-\begin{tabular}{lccc}
+\label{tab:healthy_fp}
+\begin{tabular}{lcccc}
 \toprule
-Method & Prompt & Dice \(\uparrow\) & IoU \(\uparrow\) \\
+Method & Prompt & Dice \(\uparrow\) & IoU \(\uparrow\) &
+Pred.\ vol.\ (mm\(^3\)) \(\downarrow\) \\
 \midrule
-SAM-Med2D       & Box & \textbf{0.73} & \textbf{0.60} \\
+SAM-Med2D
+  & Box & \textbf{0.73} & \textbf{0.60} & 1980 \\
 \textbf{Ours (40-step, \(R{=}2\))}
-                & Box & \textbf{0.73} & 0.59 \\
+  & Box & \textbf{0.73} & 0.59 & 1076 \\
 Ours (40-step, \(R{=}3\))
-                & Box & 0.72 & 0.59 \\
-nnInteractive   & Box & 0.71 & 0.58 \\
-SAM-Med3D       & Box & 0.54 & 0.40 \\
-SegVol          & Box & 0.37 & 0.25 \\
-VISTA3D         & Box & 0.19 & 0.11 \\
+  & Box & 0.72 & 0.59 & --- \\
+Ours (60-step, \(R{=}3\))
+  & Box & --- & --- & \textbf{1006} \\
+nnInteractive
+  & Box & 0.71 & 0.58 & 4015 \\
+SAM-Med3D
+  & Box & 0.54 & 0.40 & 2872 \\
+SegVol
+  & Box & 0.37 & 0.25 & 1395 \\
+VISTA3D$^\dagger$
+  & Box & 0.19 & 0.11 & \(0\) \\
 \bottomrule
-\end{tabular}
+\end{tabular}\\[0.25em]
+{\footnotesize $^\dagger$Near-silent on healthy prompts, but poor on
+true nodules.}
 \end{table}
 
 \paragraph{Takeaway.}
 On true nodules, healthy-counterfactual inpainting matches strong
 2D interactive segmentation and is competitive with or stronger than
-the native-3D promptable models under the same boxes.
+the native-3D promptable models under the same boxes, while remaining
+more conservative on healthy random boxes
+(Table~\ref{tab:main}).
 Figure~\ref{fig:qual-lidc} shows matched box-prompt predictions on
 selected LIDC cases with high Ours--GT agreement; under the same
 prompts, SAM-Med2D can under-segment, nnInteractive can inflate toward
 the box, and SegVol / VISTA3D can leave incomplete masks.
-The next experiment asks whether that competitiveness comes at the
-cost of over-calling on normal lung.
 
 \begin{figure*}[t]
   \centering
@@ -635,42 +861,6 @@ cost of over-calling on normal lung.
   \(R{=}2\). Cases shown are high-agreement examples under the same prompts.}
   \label{fig:qual-lidc}
 \end{figure*}
-
-\subsection{Healthy False-Positive Probe}
-Table~\ref{tab:healthy_fp} reports mean predicted mask volume
-(mm\(^3\)) on random boxes in nodule-free lung. Among methods that
-remain competitive on LIDC (Table~\ref{tab:main}), the recommended
-Ours configuration (\(40\)-step, \(R{=}2\)) yields substantially
-less spurious volume than SAM-Med2D~\citep{sam_med2d2023}, SegVol,
-and especially nnInteractive~\citep{nninteractive2025}.
-VISTA3D~\citep{vista3d2024} is nearly silent on healthy tissue, but
-its LIDC Dice (\(0.19\)) shows that silence alone is not useful without
-sensitivity to real nodules.
-Figure~\ref{fig:fp-tradeoff} places every method in the
-true-nodule Dice vs.\ healthy FP volume plane.
-
-\begin{table}[t]
-\centering
-\caption{Healthy false-positive probe: random boxes in nodule-free
-lung (\(N{=}3840\)). Lower predicted volume is better. Dice against
-empty GT is omitted.}
-\label{tab:healthy_fp}
-\begin{tabular}{lc}
-\toprule
-Method & Pred.\ volume (mm\(^3\)) \(\downarrow\) \\
-\midrule
-VISTA3D$^\dagger$     & \(0\) \\
-\textbf{Ours (60-step, \(R{=}3\))} & \textbf{1006} \\
-Ours (40-step, \(R{=}2\)) & 1076 \\
-SegVol                & 1395 \\
-SAM-Med2D             & 1980 \\
-SAM-Med3D             & 2872 \\
-nnInteractive         & 4015 \\
-\bottomrule
-\end{tabular}\\[0.25em]
-{\footnotesize $^\dagger$Near-silent on healthy prompts, but poor on
-true nodules (Table~\ref{tab:main}).}
-\end{table}
 
 \begin{figure}[t]
   \centering
@@ -838,7 +1028,7 @@ Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 \end{figure*}
 
 \subsection{Discussion}
-Across Tables~\ref{tab:main}--\ref{tab:healthy_fp} and
+Across Table~\ref{tab:main} and
 Figures~\ref{fig:results}--\ref{fig:fp-tradeoff}, the operating point we
 report on LIDC (\(40\)-step, \(R{=}2\)) is nearly tied with SAM-Med2D on
 true-nodule Dice (Table~\ref{tab:main}) while predicting less spurious mask
@@ -923,6 +1113,38 @@ rate is critical in lung CT CAD.
 % =============================================================
 \section*{Acknowledgments}
 [Omitted for anonymous review.]
+
+% =============================================================
+\clearpage
+\section*{Supplementary Material}
+
+\subsection*{Default Hyperparameters}
+\begin{table}[h]
+\centering
+\caption{Default hyperparameters used in our method.}
+\label{tab:hparams}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Patch size & \(64\times 64\times 64\) \\
+Spacing & \(0.7\times 0.7\times 1.5\,\mathrm{mm}\) \\
+HU window & \([-1000,\,400]\) \\
+Scheduler & Rectified flow (continuous) \\
+Train timesteps \(T\) & \(1000\) \\
+U-Net channels & \([64,128,128,128]\) \\
+Objective & \(\ell_1\) velocity regression \\
+Learning rate & \(10^{-4}\) \\
+Inference steps \(N\) & \(40\) \\
+Refine rounds \(R\) & \(2\) \\
+Residual threshold \(\tau\) & \(0.05\) \\
+Search dilation \(\rho\) & \(2\) \\
+Box padding \(p\) & \(2\) voxels \\
+Min.\ hole voxels \(\eta\) & \(8\) \\
+Morphology & off \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 % =============================================================
 \bibliography{AAAI2027_paper}

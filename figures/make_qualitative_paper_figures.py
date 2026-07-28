@@ -356,10 +356,16 @@ def _merge_extra_foundations(cfg, repo, case_indices, stores, logger) -> None:
 def run_lidc_and_ablation(force: bool) -> None:
     from scripts.setting import load_yaml_config, setup_logging
 
-    _patch_foundation_imports()
     logger = setup_logging("paper.qual.lidc")
-    cfg = load_yaml_config(CNET / "configs/benchmark_test_foundation.yaml")
-    stores = _collect_stores_lidc(cfg, logger, force=force)
+    pkl = CACHE / "lidc_stores.pkl"
+    cfg_path = CNET / "configs/benchmark_test_foundation.yaml"
+    if pkl.is_file() and not force:
+        # Redraw from cache without needing the (often missing) YAML.
+        stores = _collect_stores_lidc({}, logger, force=False)
+    else:
+        _patch_foundation_imports()
+        cfg = load_yaml_config(cfg_path)
+        stores = _collect_stores_lidc(cfg, logger, force=force)
     # Adaptive darker window per slice (None → _display_limits inside _gray).
     hu_min, hu_max = None, None
 
@@ -618,15 +624,21 @@ def _fill_colored_regions(
 def _compose_mosaic(
     panels: list[list[np.ndarray]],
     col_labels: list[str],
-    title: str,
+    title: str,  # unused; kept for call-site compatibility (caption is in LaTeX)
     *,
     col_gap: int = 2,
     row_gap: int = 6,
     stem: str,
 ) -> None:
-    """Tile RGB panels with tiny pixel gaps; column labels baked into a header strip."""
+    """Tile RGB panels with tiny pixel gaps; column labels baked into a header strip.
+
+    No figure title is drawn (paper captions carry that). Labels are rendered at
+    2× supersampling then downscaled for sharper type in the PDF/PNG.
+    """
     from PIL import Image as _PILImage
     from PIL import ImageDraw, ImageFont
+
+    del title  # legend/title lives in the LaTeX caption, not on the figure
 
     nrows, ncols = len(panels), len(panels[0])
     h = int(panels[0][0].shape[0])
@@ -655,34 +667,57 @@ def _compose_mosaic(
         mosaic = row_chunks[0]
 
     mw = int(mosaic.shape[1])
-    # Header strip: each label centered on its panel column (pixel-aligned).
-    header_h = 32
-    header = _PILImage.new("RGB", (mw, header_h), (255, 255, 255))
-    draw = ImageDraw.Draw(header)
-    try:
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 16)
-    except OSError:
+    # Header strip: large bold labels, 2× render then Lanczos downscale.
+    header_h = 52
+    scale = 2
+    header_hi = _PILImage.new("RGB", (mw * scale, header_h * scale), (255, 255, 255))
+    draw = ImageDraw.Draw(header_hi)
+    font_size = 30 * scale
+    font = None
+    for path in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "DejaVuSans-Bold.ttf",
+    ):
         try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
+            font = ImageFont.truetype(path, font_size)
+            break
         except OSError:
-            font = ImageFont.load_default()
+            continue
+    if font is None:
+        font = ImageFont.load_default()
     for c, lab in enumerate(col_labels):
-        cx = c * (w + col_gap) + w // 2
+        cx = (c * (w + col_gap) + w // 2) * scale
         bbox = draw.textbbox((0, 0), lab, font=font)
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        draw.text((cx - tw // 2, max(0, (header_h - th) // 2 - 1)), lab, fill=(0, 0, 0), font=font)
+        draw.text(
+            (cx - tw // 2, max(0, (header_h * scale - th) // 2 - scale)),
+            lab,
+            fill=(0, 0, 0),
+            font=font,
+        )
+    header = header_hi.resize((mw, header_h), _PILImage.LANCZOS)
     mosaic = np.concatenate([np.asarray(header), mosaic], axis=0)
 
     mh, mw = mosaic.shape[:2]
-    fig_w = max(6.9, 1.05 * ncols)
-    fig_h = fig_w * (mh / mw) + 0.32
+    fig_w = max(7.2, 1.12 * ncols)
+    fig_h = fig_w * (mh / max(mw, 1))
     fig = plt.figure(figsize=(fig_w, fig_h), facecolor="white")
-    ax = fig.add_axes([0.005, 0.01, 0.99, 0.90])
+    ax = fig.add_axes([0.0, 0.0, 1.0, 1.0])
     ax.imshow(mosaic, aspect="equal", interpolation="nearest")
     ax.set_axis_off()
-    fig.suptitle(title, fontweight="bold", fontsize=10, y=0.985)
-    save_fig(fig, stem)
-
+    # Higher DPI for crisp labels on qualitative grids.
+    for ext in ("png", "pdf"):
+        path = FIG_DIR / f"{stem}.{ext}"
+        fig.savefig(
+            path,
+            dpi=400,
+            bbox_inches="tight",
+            facecolor="white",
+            pad_inches=0.01,
+        )
+        LOG.info("Wrote %s", path)
+    plt.close(fig)
 
 def _draw_paper_grid(stores, col_keys, col_labels, stem, title, hu_min, hu_max, show_gt_on_all=True):
     # Drop method columns with no prediction object at all (failed FM imports).
@@ -714,9 +749,8 @@ def run_maisi(force: bool) -> None:
     import pickle
 
     logger = setup_logging("paper.qual.maisi")
-    cfg = load_yaml_config(CNET / "configs/benchmark_test_maisi_foundation.yaml")
-
     pkl = CACHE / "maisi_stores.pkl"
+    cfg_path = CNET / "configs/benchmark_test_maisi_foundation.yaml"
     if pkl.is_file() and not force:
         raw = pickle.loads(pkl.read_bytes())
         if raw and isinstance(raw[0], dict):
@@ -729,6 +763,7 @@ def run_maisi(force: bool) -> None:
         import scripts.visualize_ours_step_refine_comparison as viz
 
         _patch_foundation_imports()
+        cfg = load_yaml_config(cfg_path)
         out = CACHE / "maisi_raw"
         out.mkdir(parents=True, exist_ok=True)
         captured = {}
