@@ -34,6 +34,7 @@ from make_method_overview import (  # noqa: E402
 )
 
 OUT = FIG_DIR / "bakeoff" / "method_overview" / "assets"
+REFINE_CACHE = CACHE / "method_overview_refine"
 N_STACK = 3  # consecutive slices centered on the nodule plane
 
 
@@ -121,8 +122,9 @@ def _render_panel_at_z(
     if kind == "box":
         return _draw_box(_rgb_gray(g), bbox)
     if kind == "hole":
-        hole = np.zeros_like(n2, dtype=bool)
-        if bbox is not None:
+        # Prefer an explicit hole mask (refine round-0) when provided via `pred`.
+        hole = p2.astype(bool) if p2 is not None and p2.any() else np.zeros_like(n2, dtype=bool)
+        if not hole.any() and bbox is not None:
             y0, x0, y1, x1 = bbox
             hole[y0 : y1 + 1, x0 : x1 + 1] = True
         img = _rgb_gray(g)
@@ -148,6 +150,9 @@ def _render_panel_at_z(
     if kind == "final":
         out = _overlay_contour(_rgb_gray(g), p2, (0.2, 0.95, 0.35), width=1)
         return _overlay_contour(out, n2, (0.95, 0.15, 0.12), width=1)
+    if kind == "mask_only":
+        # Lime contour of an explicit binary mask (refine-round hole).
+        return _overlay_contour(_rgb_gray(g), p2, (0.2, 0.95, 0.35), width=1)
     raise ValueError(kind)
 
 
@@ -177,21 +182,76 @@ def _load_case(stores, case_index: int):
     return st, z, hu_g, inp_g, nod, pred, z_ids
 
 
+def _load_refine_case(case_index: int):
+    """Load GT / inpaint / per-round hole masks from a prior 40-step R=2 run."""
+    base = REFINE_CACHE
+    required = [
+        base / f"case{case_index}_gt_hu.npy",
+        base / f"case{case_index}_inp_hu.npy",
+        base / f"case{case_index}_nodule.npy",
+        base / f"case{case_index}_round0_hole.npy",
+        base / f"case{case_index}_round1_hole.npy",
+        base / f"case{case_index}_round2_hole.npy",
+    ]
+    missing = [p for p in required if not p.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            "Missing refine-cache files for "
+            f"#{case_index}: {[p.name for p in missing]}. "
+            "Re-run 40-step R=2 inference into paper_qual_cache/method_overview_refine/."
+        )
+    hu = np.squeeze(np.load(required[0]))
+    inp = np.squeeze(np.load(required[1]))
+    nod = np.load(required[2]) > 0.5
+    h0 = np.load(required[3]) > 0.5
+    h1 = np.load(required[4]) > 0.5
+    h2 = np.load(required[5]) > 0.5
+    z = int(np.argmax(nod.reshape(nod.shape[0], -1).sum(1)))
+    hu_g = np.stack([_gray(hu[zi]) for zi in range(hu.shape[0])], axis=0)
+    inp_g = np.stack([_gray(inp[zi]) for zi in range(inp.shape[0])], axis=0)
+    z_ids = _slice_ids(z, N_STACK, hu.shape[0])
+
+    def _dice(a, b):
+        a = a.astype(bool)
+        b = b.astype(bool)
+        inter = (a & b).sum()
+        den = a.sum() + b.sum()
+        return float(2 * inter / den) if den else 1.0
+
+    scores = {
+        "dice_r0": _dice(h0, nod),
+        "dice_r1": _dice(h1, nod),
+        "dice_r2": _dice(h2, nod),
+        "vox_r0": int(h0.sum()),
+        "vox_r1": int(h1.sum()),
+        "vox_r2": int(h2.sum()),
+    }
+    return z, hu_g, inp_g, nod, h0, h1, h2, z_ids, scores
+
+
 def main(train_case: int = 1370, infer_case: int = 1183) -> None:
     """Export assets with separate LIDC cases for training vs inference rows.
 
     Default: train visuals from #1370; inference / refinement from #1183
-    (clear centered nodule, distinct from the training exemplar).
+    (40-step R=2: iter-2 hole Dice > iter-1, both high).
     """
     OUT.mkdir(parents=True, exist_ok=True)
     stores = pickle.loads((CACHE / "lidc_stores.pkl").read_bytes())
 
     tr = _load_case(stores, train_case)
-    inf = _load_case(stores, infer_case)
     _, z_tr, hu_tr, inp_tr, nod_tr, pred_tr, z_tr_ids = tr
-    _, z_inf, hu_inf, inp_inf, nod_inf, pred_inf, z_inf_ids = inf
+    z_inf, hu_inf, inp_inf, nod_inf, h0, h1, h2, z_inf_ids, scores = _load_refine_case(infer_case)
     print(f"TRAIN  case #{train_case}  z={z_tr}  stack={z_tr_ids}")
-    print(f"INFER  case #{infer_case}  z={z_inf}  stack={z_inf_ids}")
+    print(
+        f"INFER  case #{infer_case}  z={z_inf}  stack={z_inf_ids}  "
+        f"dice r0/r1/r2={scores['dice_r0']:.4f}/{scores['dice_r1']:.4f}/{scores['dice_r2']:.4f}  "
+        f"Δ(r2-r1)={scores['dice_r2'] - scores['dice_r1']:+.4f}"
+    )
+    if scores["dice_r2"] <= scores["dice_r1"]:
+        raise RuntimeError(
+            f"Infer case #{infer_case} does not improve at iteration 2 "
+            f"(r1={scores['dice_r1']:.4f}, r2={scores['dice_r2']:.4f})."
+        )
 
     # Training-row assets (healthy prior family)
     train_map = {
@@ -218,28 +278,39 @@ def main(train_case: int = 1370, infer_case: int = 1183) -> None:
     _save("rf_training.png", _compose_stack(rf_slices), size=280)
     _save("velocity_loss.png", _compose_stack(vel_slices), size=280)
 
-    # Inference-row + mask-refinement assets (different case)
+    # Inference row: CT / box / hole / recon / residual / final (R=2 hole).
     infer_map = {
-        "test_ct.png": "ct",
-        "box_prompt.png": "box",
-        "initial_hole.png": "hole",
-        "healthy_reconstruction.png": "recon",
-        "residual.png": "residual",
-        "threshold.png": "threshold",
-        "final_seg.png": "final",
-        "iter1.png": "hole",
-        "residual1.png": "residual",
-        "iter2.png": "refined",
-        "final_zoom.png": "final",
+        "test_ct.png": ("ct", h2),
+        "box_prompt.png": ("box", h2),
+        "initial_hole.png": ("hole", h0),
+        "healthy_reconstruction.png": ("recon", h2),
+        "residual.png": ("residual", h2),
+        "threshold.png": ("threshold", h2),
+        "final_seg.png": ("final", h2),
+        "final_zoom.png": ("final", h2),
+        "residual1.png": ("residual", h2),
     }
-    for name, kind in infer_map.items():
-        _save(name, _stack_for(kind, z_inf_ids, hu_inf, inp_inf, nod_inf, pred_inf), size=280)
+    for name, (kind, pred) in infer_map.items():
+        _save(name, _stack_for(kind, z_inf_ids, hu_inf, inp_inf, nod_inf, pred), size=280)
+
+    # Mask-refinement strip: true refine-round holes (contour overlays).
+    # Keep initial_hole.png as the blacked inference-row panel; strip uses initial_mask.png.
+    for name, hole in (
+        ("initial_mask.png", h0),
+        ("iter1.png", h1),
+        ("iter2.png", h2),
+    ):
+        _save(
+            name,
+            _stack_for("mask_only", z_inf_ids, hu_inf, inp_inf, nod_inf, hole),
+            size=280,
+        )
 
     slice_dir = OUT / "slices"
     slice_dir.mkdir(exist_ok=True)
     for kind in ("ct", "box", "hole", "recon", "residual", "final"):
         for zi in z_inf_ids:
-            rgb = _render_panel_at_z(hu_inf, inp_inf, nod_inf, pred_inf, zi, kind)
+            rgb = _render_panel_at_z(hu_inf, inp_inf, nod_inf, h2, zi, kind)
             arr = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
             Image.fromarray(arr).resize((128, 128), Image.NEAREST).save(
                 slice_dir / f"{kind}_z{zi}.png"
@@ -256,6 +327,10 @@ def main(train_case: int = 1370, infer_case: int = 1183) -> None:
         "Method-overview assets (3 consecutive axial slices per panel).\n"
         f"Training row: LIDC #{train_case} (z={z_tr}, stack {z_tr_ids}).\n"
         f"Inference / refinement: LIDC #{infer_case} (z={z_inf}, stack {z_inf_ids}).\n"
+        f"Refine Dice (40-step): r0={scores['dice_r0']:.4f}, "
+        f"r1={scores['dice_r1']:.4f}, r2={scores['dice_r2']:.4f} "
+        f"(Δr2−r1={scores['dice_r2'] - scores['dice_r1']:+.4f}).\n"
+        "Mask strip uses real refine-round holes from method_overview_refine/.\n"
         "Regenerate: nninteractive python figures/export_method_overview_tikz_assets.py\n"
     )
     print(f"Done → {OUT}")

@@ -204,12 +204,15 @@ axial slices from LIDC \(64^{3}\) patches.
   \includegraphics[width=\textwidth]{figures/fig_method_overview_2.pdf}
   \caption{Method overview.
   \textbf{Top (training):} a 3D rectified-flow network learns a healthy CT
-  prior from nodule-free \(64^{3}\) patches.
+  prior from nodule-free \(64^{3}\) patches (path / velocity equations shown
+  under the blocks).
   \textbf{Middle (inference):} a box prompt defines an initial hole;
   mask-guided inpainting (using the prior) produces a healthy reconstruction;
-  the residual \(|x-\hat{x}|\) is thresholded and refined for \(R\) rounds.
-  \textbf{Bottom:} successive mask refinements
-  (red\,=\,GT, lime\,=\,prediction).
+  the residual \(|\mathbf{x}_0-\hat{\mathbf{x}}|\) is thresholded and refined
+  for \(R\) rounds (RF path, RePaint inject, residual, and dilation update
+  shown beside the blocks).
+  \textbf{Bottom:} mask refinement---initial box mask, then Iteration~1
+  and Iteration~2 masks (lime contours).
   Panels show three consecutive axial slices.}
   \label{fig:method}
 \end{figure*}

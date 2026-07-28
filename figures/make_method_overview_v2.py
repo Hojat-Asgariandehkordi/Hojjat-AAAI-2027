@@ -131,11 +131,27 @@ def _proc_box(ax, x, y, w, h, text: str, *, fc=C_PANEL, ec=C_INK, tc=C_INK, fs=7
     return x + w / 2, y + h / 2
 
 
+def _math_note(ax, x, y, text: str, *, color=C_MUTED, fs=5.8, ha="center", va="top"):
+    """Secondary equation annotation beside / under a main block (not a block label)."""
+    ax.text(
+        x,
+        y,
+        text,
+        ha=ha,
+        va=va,
+        fontsize=fs,
+        color=color,
+        zorder=7,
+        linespacing=1.15,
+        clip_on=False,
+    )
+
+
 def draw() -> None:
     # Vertical bands (bottom → top), carefully non-overlapping:
-    #   footnote | refinement strip | gap | inference imgs+caps | loop | banner
-    #   | divider | training imgs+caps | banner
-    fig_w, fig_h = 12.6, 6.55
+    #   footnote | refinement strip | gap | inference imgs+caps | math notes | loop | banner
+    #   | divider | training imgs+caps | math notes | banner
+    fig_w, fig_h = 12.6, 7.05
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ax.set_xlim(0, fig_w)
     ax.set_ylim(0, fig_h)
@@ -146,7 +162,7 @@ def draw() -> None:
 
     # ===================== TRAINING (content + banner centered) =====================
     s = 0.88
-    y_img_t = 4.78
+    y_img_t = 5.20
     y_mid_t = y_img_t + s / 2
     cap_y_t = y_img_t - 0.18
 
@@ -162,7 +178,7 @@ def draw() -> None:
     total_t = sum(widths) + gap_t * (len(widths) - 1)
     x0_t = (fig_w - total_t) / 2
 
-    y_train_banner = 6.10
+    y_train_banner = 6.55
     banner_pad = 0.55
     train_banner_w = total_t + banner_pad
     train_banner_x = (fig_w - train_banner_w) / 2
@@ -203,14 +219,43 @@ def draw() -> None:
     for i in range(len(centers_t) - 1):
         _arrow(ax, rights_t[i] + 0.04, y_mid_t, lefts_t[i + 1] - 0.04, y_mid_t)
 
+    # Math notes under training (RF path + velocity objective; paper notation)
+    y_math_t = cap_y_t - 0.38
+    _math_note(
+        ax,
+        centers_t[1][0],
+        y_math_t,
+        r"$\boldsymbol{\varepsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I})$",
+        color=C_TRAIN,
+        fs=5.8,
+    )
+    _math_note(
+        ax,
+        centers_t[2][0],
+        y_math_t,
+        r"$\mathbf{x}_t=(1-t/T)\mathbf{x}_0+(t/T)\boldsymbol{\varepsilon}$"
+        "\n"
+        r"$\mathbf{u}(\mathbf{x}_t,t)=\mathbf{x}_0-\boldsymbol{\varepsilon}$",
+        color=C_TRAIN,
+        fs=5.4,
+    )
+    _math_note(
+        ax,
+        centers_t[3][0],
+        y_math_t,
+        r"$\mathcal{L}(\theta)=\mathbb{E}[\|v_\theta(\mathbf{x}_t,t)-\mathbf{u}\|_1]$",
+        color=C_TRAIN,
+        fs=5.4,
+    )
+
     # short solid marker: prior is used at inference (no long dashed curve)
-    y_div = 4.40
+    y_div = 4.55
     px = centers_t[-1][0]
-    _vline(ax, px, cap_y_t - 0.12, y_div + 0.02, color=C_TRAIN, lw=1.15)
+    _vline(ax, px, y_math_t - 0.22, y_div + 0.02, color=C_TRAIN, lw=1.15)
     _arrow(ax, px, y_div + 0.02, px, y_div - 0.01, color=C_TRAIN, lw=1.15, ms=7.5)
     ax.text(
         px + 0.10,
-        (cap_y_t - 0.12 + y_div) / 2,
+        (y_math_t - 0.10 + y_div) / 2,
         "→ inference",
         ha="left",
         va="center",
@@ -222,7 +267,7 @@ def draw() -> None:
 
     # ===================== INFERENCE (content + banner centered) =====================
     si = 0.78
-    y_img_i = 2.35
+    y_img_i = 2.55
     y_mid_i = y_img_i + si / 2
     cap_y_i = y_img_i - 0.17
 
@@ -236,7 +281,7 @@ def draw() -> None:
             dict(fc="#D8F3E8", ec=C_INFER, tc=C_INFER, w=1.60, h=0.90),
         ),
         ("img", "healthy_reconstruction.png", "Healthy recon."),
-        ("img", "residual.png", r"Residual $|x-\hat{x}|$"),
+        ("img", "residual.png", r"Residual $|\mathbf{x}_0-\hat{\mathbf{x}}|$"),
         ("box", "Threshold\n+ refine", dict(fc=C_PANEL, ec=C_INK, tc=C_INK, w=1.15, h=0.68)),
         ("img", "final_seg.png", "Final (red / lime)"),
     ]
@@ -245,7 +290,7 @@ def draw() -> None:
     total_i = sum(widths_i) + gap_i * (len(widths_i) - 1)
     x0_i = (fig_w - total_i) / 2
 
-    y_inf_banner = 3.95
+    y_inf_banner = 4.20
     inf_banner_w = total_i + 0.40
     inf_banner_x = (fig_w - inf_banner_w) / 2
     ax.add_patch(
@@ -293,6 +338,69 @@ def draw() -> None:
     for i in range(len(centers_i) - 1):
         _arrow(ax, rights_i[i] + 0.03, y_mid_i, lefts_i[i + 1] - 0.03, y_mid_i)
 
+    # Compact must-show math (paper notation) under inference blocks
+    y_math_i = cap_y_i - 0.42
+    _math_note(
+        ax,
+        centers_i[1][0],
+        y_math_i,
+        r"$\rightarrow\,\mathbf{h}^{(0)}$",
+        color=C_INFER,
+        fs=5.3,
+    )
+    _math_note(
+        ax,
+        centers_i[2][0],
+        y_math_i,
+        r"$\mathbf{h}^{(0)}_z=\mathrm{AABB}_{2D}(\mathbf{y}_z)\oplus p$",
+        color=C_INFER,
+        fs=5.1,
+    )
+    _math_note(
+        ax,
+        centers_i[3][0],
+        y_math_i,
+        r"$\mathbf{x}_t\!\leftarrow\!\mathbf{m}\odot\tilde{\mathbf{x}}_t(\mathbf{x}_0)+(1-\mathbf{m})\odot\mathbf{x}_t$"
+        "\n"
+        r"$\mathbf{x}_t\!\leftarrow\!\mathbf{x}_t+v_\theta(\mathbf{x}_t,t)\,\Delta t$",
+        color=C_INFER,
+        fs=4.9,
+    )
+    _math_note(
+        ax,
+        centers_i[4][0],
+        y_math_i,
+        r"$\hat{\mathbf{x}}^{(r)}$",
+        color=C_INFER,
+        fs=5.4,
+    )
+    _math_note(
+        ax,
+        centers_i[5][0],
+        y_math_i,
+        r"$\mathbf{d}^{(r)}=|\mathbf{x}_0-\hat{\mathbf{x}}^{(r)}|$",
+        color=C_LOOP,
+        fs=5.2,
+    )
+    _math_note(
+        ax,
+        centers_i[6][0],
+        y_math_i,
+        r"$\mathbf{h}^{(r+1)}=\mathbf{1}[\mathbf{d}^{(r)}>\tau]$"
+        "\n"
+        r"$\odot\,\mathrm{Dilate}(\mathbf{h}^{(r)};\rho)$",
+        color=C_LOOP,
+        fs=5.0,
+    )
+    _math_note(
+        ax,
+        centers_i[7][0],
+        y_math_i,
+        r"$\hat{\mathbf{y}}=\mathbf{h}^{(R)}$",
+        color=C_INFER,
+        fs=5.5,
+    )
+
     # iterate loop in the clear band BETWEEN image tops and inference banner
     x_hole, x_upd = centers_i[hole_idx][0], centers_i[update_idx][0]
     y_top_img = y_img_i + si
@@ -303,7 +411,7 @@ def draw() -> None:
     ax.text(
         (x_hole + x_upd) / 2,
         y_loop - 0.04,
-        r"iterate $R$ rounds",
+        r"iterate $r=0,\ldots,R$",
         ha="center",
         va="top",
         fontsize=6.7,
@@ -313,12 +421,11 @@ def draw() -> None:
     )
 
     # ===================== MASK REFINEMENT (horizontal, centered) =====================
-    y_strip, strip_h = 0.18, 1.42
+    y_strip, strip_h = 0.12, 1.55
     zoom = [
+        ("initial_mask.png", "Initial mask"),
         ("iter1.png", "Iteration 1"),
-        ("residual1.png", "Residual"),
         ("iter2.png", "Iteration 2"),
-        ("final_zoom.png", "Final"),
     ]
     sz = 0.90
     gap_z = 0.70
@@ -329,7 +436,7 @@ def draw() -> None:
     _round(ax, strip_x, y_strip, strip_w, strip_h, C_ZOOM_BG, C_ZOOM_EDGE, lw=0.85, rs=0.05, z=2)
     ax.text(
         strip_x + strip_w / 2,
-        y_strip + strip_h - 0.12,
+        y_strip + strip_h - 0.10,
         "Mask refinement",
         ha="center",
         va="top",
@@ -338,14 +445,24 @@ def draw() -> None:
         color=C_INK,
         zorder=5,
     )
+    # refinement idea equation beside the strip title
+    _math_note(
+        ax,
+        strip_x + strip_w / 2,
+        y_strip + strip_h - 0.28,
+        r"$\mathbf{h}^{(r+1)}=\mathbf{1}[\mathbf{d}^{(r)}>\tau]\odot\mathrm{Dilate}(\mathbf{h}^{(r)};\rho),"
+        r"\ \ \hat{\mathbf{y}}=\mathbf{h}^{(R)}$",
+        color=C_LOOP,
+        fs=5.7,
+    )
 
     xz0 = strip_x + pad_z
-    yz = y_strip + 0.14
+    yz = y_strip + 0.10
     for i, (fn, lab) in enumerate(zoom):
         xz = xz0 + i * (sz + gap_z)
         ax.text(
             xz + sz / 2,
-            yz + sz + 0.05,
+            yz + sz + 0.02,
             lab,
             ha="center",
             va="bottom",

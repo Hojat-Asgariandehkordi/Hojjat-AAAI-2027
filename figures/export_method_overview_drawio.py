@@ -216,12 +216,11 @@ def main() -> None:
         )
     )
 
-    # Mask refinement
+    # Mask refinement: initial hole mask, then round-1 / round-2 masks
     zoom = [
-        ("z1", "iter1.png", "Iteration 1"),
-        ("z2", "residual1.png", "Residual"),
+        ("z1", "initial_mask.png", "Initial mask"),
+        ("z2", "iter1.png", "Iteration 1"),
         ("z3", "iter2.png", "Iteration 2"),
-        ("z4", "final_zoom.png", "Final"),
     ]
     zs, zgap = 88, 70
     zw = len(zoom) * zs + (len(zoom) - 1) * zgap

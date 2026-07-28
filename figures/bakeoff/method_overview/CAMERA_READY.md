@@ -1,15 +1,18 @@
-# Camera-ready method overview
+# Method overview — camera-ready
 
-**Final figure (paper):** `figures/fig_method_overview_2.pdf`  
-(also mirrored as `figures/fig_method_overview.pdf`)
+**Paper include:** `figures/fig_method_overview_2.pdf`  
+(mirrored as `figures/fig_method_overview.pdf`)
 
-**Source export:** Draw.io PDF export  
-(`fig_method_overview_2.drawio (2).pdf` in this folder → copied to paper path)
+**Editable source:** `fig_method_overview_2.drawio` (also under `figures/`)
 
-**Editable source:** `fig_method_overview_2.drawio` (diagrams.net)
+**Assets:** `assets/` — train LIDC #1370; inference/refinement LIDC #1183  
+(40-step R=2; iter-2 Dice > iter-1). Compact must-show equations sit beside blocks.
 
-**Content:**
-- Training (offline): LIDC `#1370` — 3 consecutive axial slices
-- Inference / mask refinement: LIDC `#1183` — 3 consecutive axial slices
+**Regenerate**
+```bash
+nninteractive python figures/export_method_overview_tikz_assets.py
+nninteractive python figures/make_method_overview_v2.py
+# then sync bakeoff mirrors / drawio embeds as needed
+```
 
-Wired in `main.tex` / `AAAI2027_paper.tex` as `Figure~\ref{fig:method}`.
+**Equations in draw.io:** HTML/Unicode math beside blocks (bold-italic vectors, subscripts); no MathJax `$$...$$`. Paper PDF uses `figures/fig_method_overview_2.pdf` from `make_method_overview_v2.py`.
