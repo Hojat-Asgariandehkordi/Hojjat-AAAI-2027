@@ -29,6 +29,10 @@
 \usepackage{xcolor}
 \usepackage{multirow}
 
+% Cross-references to the supplementary PDF
+\usepackage{xr}
+\externaldocument{supplementary}
+
 % ── Theorems (methodology) ────────────────────────────────────
 \newtheorem{proposition}{Proposition}
 \newtheorem{corollary}{Corollary}
@@ -720,7 +724,6 @@ further reduces FP volume.
 VISTA3D~\citep{vista3d2024} is nearly silent on healthy tissue, but its
 LIDC Dice (\(0.19\)) shows that silence alone is not useful without
 sensitivity to real nodules.
-Figure~\ref{fig:results} summarizes the same comparison;
 Figure~\ref{fig:fp-tradeoff} places every method in the true-nodule Dice
 vs.\ healthy FP volume plane.
 
@@ -780,16 +783,6 @@ the box, and SegVol / VISTA3D can leave incomplete masks.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{figures/fig_results_bars.pdf}
-  \caption{Matched box prompts: (a)~LIDC Dice on true nodules;
-  (b)~predicted volume on healthy random boxes (shared method order).
-  Ours is nearly tied with SAM-Med2D on (a) while producing
-  substantially less spurious mass on (b).}
-  \label{fig:results}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
   \includegraphics[width=\linewidth]{figures/fig_healthy_fp_tradeoff.pdf}
   \caption{Healthy FP probe trade-off: (a)~mean predicted volume;
   (b)~LIDC true-nodule Dice vs.\ healthy FP volume. Silent models
@@ -803,34 +796,23 @@ over-segment healthy parenchyma under this probe. Under the same prompts,
 the healthy-prior model is more conservative: competitive Dice when an
 anomaly is present, and less spurious predicted volume when it is not
 (Table~\ref{tab:healthy_fp}).
-Figure~\ref{fig:qual-fp} illustrates empty-GT random boxes where
+Figure~\ref{fig:qual-fp} (Supplementary Material) illustrates empty-GT random boxes where
 SAM-Med2D / SAM-Med3D / SegVol often paint lime masks inside the prompt,
 whereas Ours remains sparse.
 
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp.pdf}
-  \caption{Healthy false-positive probe: random boxes in nodule-free
-  lung (yellow~=~prompt contour, green~=~predicted mask fill; GT empty).
-  Columns match Figure~\ref{fig:qual-lidc}. Object-centric baselines often
-  fill the box; Ours (\(60\)-step, \(R{=}3\); Table~\ref{tab:healthy_fp})
-  is more conservative.}
-  \label{fig:qual-fp}
-\end{figure*}
-
 \subsection{Generalization: MAISI and NSCLC}
 Table~\ref{tab:cross} and Figures~\ref{fig:bench}--\ref{fig:bench-per}
-report mean Dice under the same matched-box protocol on
+(Supplementary Material) report mean Dice under the same matched-box protocol on
 MAISI~\citep{maisi2025} and NSCLC-Radiomics~\citep{aerts2014nsclc},
 with LIDC repeated for reference. Ours remains in a competitive tier on
 all three sets (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step,
 \(R{=}1\)): within rounding of nnInteractive on MAISI (both \(0.71\) at
 two decimals; nnInteractive slightly higher before rounding) and within
 \(0.01\) Dice of the best NSCLC entry (\(0.78\) vs.\ \(0.79\)).
-Figure~\ref{fig:qual-cross} shows corresponding overlays on MAISI
-synthetic nodules and matched NSCLC \(64^3\) tumor patches;
-Figure~\ref{fig:qual-nsclc-vol} shows the same four NSCLC cases as
-full-volume slices. The qualitative pattern is consistent with the
+Figures~\ref{fig:qual-cross} and~\ref{fig:qual-nsclc-vol}
+(Supplementary Material) show corresponding overlays on MAISI
+synthetic nodules, matched NSCLC \(64^3\) tumor patches, and the
+same NSCLC cases as full-volume slices. The qualitative pattern is consistent with the
 tables under matched boxes, suggesting the healthy-prior residual is
 not an LIDC-only artifact.
 
@@ -855,111 +837,32 @@ VISTA3D       & 0.19 & 0.45 & 0.12 \\
 \end{tabular}
 \end{table}
 
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig_benchmark_dice_3datasets.pdf}
-  \caption{Mean Dice under matched box prompts on LIDC, MAISI, and
-  NSCLC (grouped by method). Hatched bars highlight Ours.}
-  \label{fig:bench}
-\end{figure*}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig_benchmark_dice_per_dataset.pdf}
-  \caption{Per-dataset Dice under the same matched box prompts
-  (LIDC, MAISI, NSCLC). Ours uses dataset-specific RF configs.}
-  \label{fig:bench-per}
-\end{figure}
-
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig_qual_maisi.pdf}\\[0.12em]
-  \includegraphics[width=\textwidth]{figures/fig_qual_nsclc.pdf}
-  \caption{Cross-dataset qualitative overlays (red~=~GT, lime~=~prediction).
-  Columns: GT, SAM-Med2D, nnInteractive, SAM-Med3D, SegVol, VISTA3D, Ours.
-  Top: MAISI synthetic nodules (Ours \(60\)-step, \(R{=}3\)).
-  Bottom: NSCLC-Radiomics \(64^3\) tumor patches (Ours \(60\)-step, \(R{=}1\);
-  cases LUNG1-024 / 145 / 098 / 173).
-  Illustrative examples under matched boxes; see Table~\ref{tab:cross}
-  for aggregate Dice.}
-  \label{fig:qual-cross}
-\end{figure*}
-
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig_qual_nsclc_volume.pdf}
-  \caption{NSCLC-Radiomics whole-volume overlays for the same four
-  patients as in Figure~\ref{fig:qual-cross} (red~=~GT,
-  lime~=~prediction; Ours \(60\)-step, \(R{=}1\)). Patch crops in
-  Figure~\ref{fig:qual-cross} use the matched \(64^3\) regions from
-  these volumes.}
-  \label{fig:qual-nsclc-vol}
-\end{figure*}
-
 \subsection{Ablation: Steps and Refine Rounds}
-Table~\ref{tab:ablation} and Figure~\ref{fig:ablation} vary
+Table~\ref{tab:ablation} and Figures~\ref{fig:ablation}
+and~\ref{fig:qual-ablation} (Supplementary Material) vary
 inference steps and refine rounds \(R\) on the LIDC positive set
 (same checkpoint). Moderate compute (\(40\) steps, \(R{=}2\)) is
 sufficient for near-peak Dice; several \(R{=}3\) settings underperform the main \(R{=}2\) operating point,
 and \(80\)-step/\(R{=}2\) also does not beat it.
-Figure~\ref{fig:qual-ablation} shows the corresponding overlays: coarse
-\(30\)-step residuals clean up by \(40\)-step/\(R{=}2\), after which
-contours stay visually stable---consistent with the flat Dice curve.
-
-\begin{table}[t]
-\centering
-\caption{Ablation of inference steps and refine rounds on LIDC
-positive test (\(N{=}1658\)).}
-\label{tab:ablation}
-\begin{tabular}{lcc}
-\toprule
-Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
-\midrule
-30-step, \(R{=}3\) & 0.72 & 0.58 \\
-40-step, \(R{=}3\) & 0.72 & 0.59 \\
-\textbf{40-step, \(R{=}2\)} & \textbf{0.73} & \textbf{0.59} \\
-60-step, \(R{=}3\) & 0.72 & 0.58 \\
-80-step, \(R{=}2\) & 0.72 & 0.59 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig_ablation_steps.pdf}
-  \caption{Ablation of RF inference steps and refine rounds on LIDC
-  positives. The hatched bar is the main reported config
-  (\(40\)-step, \(R{=}2\)).}
-  \label{fig:ablation}
-\end{figure}
-
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig_qual_ablation.pdf}
-  \caption{Ablation qualitative overlays on LIDC (red~=~GT,
-  lime~=~prediction) for the step/\(R\) settings in
-  Table~\ref{tab:ablation}. Contours tighten from \(30\)-step to the
-  main \(40\)-step/\(R{=}2\) config and then remain stable.}
-  \label{fig:qual-ablation}
-\end{figure*}
 
 \subsection{Discussion}
 Across Table~\ref{tab:main} and
-Figures~\ref{fig:results}--\ref{fig:fp-tradeoff}, the operating point we
+Figure~\ref{fig:fp-tradeoff}, the operating point we
 report on LIDC (\(40\)-step, \(R{=}2\)) is nearly tied with SAM-Med2D on
 true-nodule Dice (Table~\ref{tab:main}) while predicting less spurious mask
 volume on the healthy random-box probe
 (Table~\ref{tab:healthy_fp}; \(1076\,\mathrm{mm}^3\) vs.\ \(1980\) for
 SAM-Med2D and \(4015\) for nnInteractive under the same \(40\)-step/\(R{=}2\)
 row). Cross-dataset Dice
-(Table~\ref{tab:cross}, Figures~\ref{fig:bench}--\ref{fig:bench-per})
+(Table~\ref{tab:cross}; Figures~\ref{fig:bench}--\ref{fig:bench-per},
+Supplementary Material)
 places Ours in a similar competitive tier on MAISI and NSCLC under matched
 boxes, without ranking first on every column. The ablation
 (Table~\ref{tab:ablation}, Figures~\ref{fig:ablation} and
-\ref{fig:qual-ablation}) indicates that additional sampling steps beyond this
+\ref{fig:qual-ablation}; Supplementary Material) indicates that additional sampling steps beyond this
 point yield little further Dice gain on LIDC. Qualitative overlays
-(Figures~\ref{fig:qual-lidc},~\ref{fig:qual-fp},~\ref{fig:qual-cross},
-and~\ref{fig:qual-nsclc-vol}) illustrate the same pattern under matched
+(Figure~\ref{fig:qual-lidc}; Figures~\ref{fig:qual-fp},~\ref{fig:qual-cross},
+and~\ref{fig:qual-nsclc-vol} in the Supplementary Material) illustrate the same pattern under matched
 prompts: competitive recovery on positive cases, sparser predictions on
 healthy prompts relative to several object-centric baselines, and transfer
 without lesion-mask supervision. These results support the reframing in
@@ -1029,39 +932,6 @@ rate is critical in lung CT CAD.
 % =============================================================
 \section*{Acknowledgments}
 [Omitted for anonymous review.]
-
-
-% =============================================================
-\clearpage
-\section*{Supplementary Material}
-
-\subsection*{Default Hyperparameters}
-\begin{table}[h]
-\centering
-\caption{Default hyperparameters used in our method.}
-\label{tab:hparams}
-\begin{tabular}{@{}ll@{}}
-\toprule
-\textbf{Setting} & \textbf{Value} \\
-\midrule
-Patch size & \(64\times 64\times 64\) \\
-Spacing & \(0.7\times 0.7\times 1.5\,\mathrm{mm}\) \\
-HU window & \([-1000,\,400]\) \\
-Scheduler & Rectified flow (continuous) \\
-Train timesteps \(T\) & \(1000\) \\
-U-Net channels & \([64,128,128,128]\) \\
-Objective & \(\ell_1\) velocity regression \\
-Learning rate & \(10^{-4}\) \\
-Inference steps \(N\) & \(40\) \\
-Refine rounds \(R\) & \(2\) \\
-Residual threshold \(\tau\) & \(0.05\) \\
-Search dilation \(\rho\) & \(2\) \\
-Box padding \(p\) & \(2\) voxels \\
-Min.\ hole voxels \(\eta\) & \(8\) \\
-Morphology & off \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 % =============================================================
 \bibliography{AAAI2027_paper}

@@ -1,0 +1,203 @@
+% ============================================================
+%  AAAI 2027 Anonymous Submission — Supplementary Material
+%  "Weakly-Supervised 3D Anomaly Segmentation via
+%   Region-Prompted Rectified-Flow Inpainting"
+% ============================================================
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2027}    % DO NOT CHANGE THIS
+\usepackage[hyphens]{url}            % DO NOT CHANGE THIS
+\usepackage{graphicx}                % DO NOT CHANGE THIS
+\urlstyle{rm}                        % DO NOT CHANGE THIS
+\def\UrlFont{\rm}                    % DO NOT CHANGE THIS
+\usepackage{natbib}                  % DO NOT CHANGE THIS
+\usepackage{caption}                 % DO NOT CHANGE THIS
+\frenchspacing                       % DO NOT CHANGE THIS
+
+% Recommended (algorithms)
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% Recommended (tables)
+\usepackage{booktabs}
+
+% Additional math / formatting (permitted)
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{multirow}
+
+% Cross-references to the main paper (either filename)
+\usepackage{xr}
+\externaldocument{main}
+\externaldocument{AAAI2027_paper}
+
+% Supplementary numbering
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thesection}{S\arabic{section}}
+
+\pdfinfo{/TemplateVersion (2027.1)}
+
+\setcounter{secnumdepth}{1}
+
+\title{Weakly-Supervised 3D Anomaly Segmentation via\\
+       Region-Prompted Rectified-Flow Inpainting\\[0.4em]
+       \large Supplementary Material}
+
+\author{
+    Anonymous Submission
+}
+\affiliations{
+    Anonymous Institution
+}
+
+\begin{document}
+\maketitle
+
+This supplementary document provides default hyperparameters, additional
+qualitative and cross-dataset figures, and the inference-step~/~refine-round
+ablation referenced in the main paper.
+
+\section{Default Hyperparameters}
+\begin{table}[h]
+\centering
+\caption{Default hyperparameters used in our method.}
+\label{tab:hparams}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Patch size & \(64\times 64\times 64\) \\
+Spacing & \(0.7\times 0.7\times 1.5\,\mathrm{mm}\) \\
+HU window & \([-1000,\,400]\) \\
+Scheduler & Rectified flow (continuous) \\
+Train timesteps \(T\) & \(1000\) \\
+U-Net channels & \([64,128,128,128]\) \\
+Objective & \(\ell_1\) velocity regression \\
+Learning rate & \(10^{-4}\) \\
+Inference steps \(N\) & \(40\) \\
+Refine rounds \(R\) & \(2\) \\
+Residual threshold \(\tau\) & \(0.05\) \\
+Search dilation \(\rho\) & \(2\) \\
+Box padding \(p\) & \(2\) voxels \\
+Min.\ hole voxels \(\eta\) & \(8\) \\
+Morphology & off \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Additional Qualitative and Cross-Dataset Figures}
+\label{sec:supp:extra-figs}
+
+Figure~\ref{fig:qual-fp} shows healthy false-positive probe overlays.
+Figures~\ref{fig:bench}--\ref{fig:bench-per} visualize cross-dataset Dice
+from Table~\ref{tab:cross} in the main paper.
+Figures~\ref{fig:qual-cross} and~\ref{fig:qual-nsclc-vol} provide
+matched-box qualitative overlays on MAISI and NSCLC.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp.pdf}
+  \caption{Healthy false-positive probe: random boxes in nodule-free
+  lung (yellow~=~prompt contour, green~=~predicted mask fill; GT empty).
+  Columns match Figure~\ref{fig:qual-lidc}. Object-centric baselines often
+  fill the box; Ours (\(60\)-step, \(R{=}3\); Table~\ref{tab:healthy_fp})
+  is more conservative.}
+  \label{fig:qual-fp}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_benchmark_dice_3datasets.pdf}
+  \caption{Mean Dice under matched box prompts on LIDC, MAISI, and
+  NSCLC (grouped by method). Hatched bars highlight Ours.}
+  \label{fig:bench}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_benchmark_dice_per_dataset.pdf}
+  \caption{Per-dataset Dice under the same matched box prompts
+  (LIDC, MAISI, NSCLC). Ours uses dataset-specific RF configs.}
+  \label{fig:bench-per}
+\end{figure}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_maisi.pdf}\\[0.12em]
+  \includegraphics[width=\textwidth]{figures/fig_qual_nsclc.pdf}
+  \caption{Cross-dataset qualitative overlays (red~=~GT, lime~=~prediction).
+  Columns: GT, SAM-Med2D, nnInteractive, SAM-Med3D, SegVol, VISTA3D, Ours.
+  Top: MAISI synthetic nodules (Ours \(60\)-step, \(R{=}3\)).
+  Bottom: NSCLC-Radiomics \(64^3\) tumor patches (Ours \(60\)-step, \(R{=}1\);
+  cases LUNG1-024 / 145 / 098 / 173).
+  Illustrative examples under matched boxes; see Table~\ref{tab:cross}
+  for aggregate Dice.}
+  \label{fig:qual-cross}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_nsclc_volume.pdf}
+  \caption{NSCLC-Radiomics whole-volume overlays for the same four
+  patients as in Figure~\ref{fig:qual-cross} (red~=~GT,
+  lime~=~prediction; Ours \(60\)-step, \(R{=}1\)). Patch crops in
+  Figure~\ref{fig:qual-cross} use the matched \(64^3\) regions from
+  these volumes.}
+  \label{fig:qual-nsclc-vol}
+\end{figure*}
+
+\section{Ablation: Steps and Refine Rounds}
+\label{sec:supp:ablation}
+
+Table~\ref{tab:ablation} and Figures~\ref{fig:ablation}
+and~\ref{fig:qual-ablation} vary inference steps and refine rounds \(R\)
+on the LIDC positive set (same checkpoint). Moderate compute
+(\(40\) steps, \(R{=}2\)) is sufficient for near-peak Dice; several
+\(R{=}3\) settings underperform the main \(R{=}2\) operating point, and
+\(80\)-step/\(R{=}2\) also does not beat it.
+Figure~\ref{fig:qual-ablation} shows the corresponding overlays: coarse
+\(30\)-step residuals clean up by \(40\)-step/\(R{=}2\), after which
+contours stay visually stable---consistent with the flat Dice curve.
+
+\begin{table}[t]
+\centering
+\caption{Ablation of inference steps and refine rounds on LIDC
+positive test (\(N{=}1658\)).}
+\label{tab:ablation}
+\begin{tabular}{lcc}
+\toprule
+Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
+\midrule
+30-step, \(R{=}3\) & 0.72 & 0.58 \\
+40-step, \(R{=}3\) & 0.72 & 0.59 \\
+\textbf{40-step, \(R{=}2\)} & \textbf{0.73} & \textbf{0.59} \\
+60-step, \(R{=}3\) & 0.72 & 0.58 \\
+80-step, \(R{=}2\) & 0.72 & 0.59 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_ablation_steps.pdf}
+  \caption{Ablation of RF inference steps and refine rounds on LIDC
+  positives. The hatched bar is the main reported config
+  (\(40\)-step, \(R{=}2\)).}
+  \label{fig:ablation}
+\end{figure}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_ablation.pdf}
+  \caption{Ablation qualitative overlays on LIDC (red~=~GT,
+  lime~=~prediction) for the step/\(R\) settings in
+  Table~\ref{tab:ablation}. Contours tighten from \(30\)-step to the
+  main \(40\)-step/\(R{=}2\) config and then remain stable.}
+  \label{fig:qual-ablation}
+\end{figure*}
+
+\end{document}
