@@ -40,6 +40,16 @@
 % ── Convenience macros ────────────────────────────────────────
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
 \newcommand{\norm}[1]{\left\|#1\right\|}
+% Stable pointers into supplementary.tex (S-numbering)
+\newcommand{\suppTabHparams}{Table~S1}
+\newcommand{\suppFigQualFP}{Figure~S1}
+\newcommand{\suppFigBench}{Figure~S2}
+\newcommand{\suppFigBenchPer}{Figure~S3}
+\newcommand{\suppFigQualCross}{Figure~S4}
+\newcommand{\suppFigQualNSCLC}{Figure~S5}
+\newcommand{\suppTabAblation}{Table~S2}
+\newcommand{\suppFigAblation}{Figure~S6}
+\newcommand{\suppFigQualAblation}{Figure~S7}
 
 \pdfinfo{/TemplateVersion (2027.1)}
 
@@ -385,7 +395,7 @@ what healthy lung looks like.
 Mild flips and intensity jitter regularize the prior without introducing
 lesion-like contrast that would contaminate residual scoring at inference.
 Full channel widths and optimizer settings are listed in
-Table~\ref{tab:hparams} (Supplementary Material).
+\suppTabHparams{} of the Supplementary Material.
 
 %------------------------------------------------------------------------------
 \subsection{Mask-Guided Rectified-Flow Inpainting}
@@ -789,25 +799,27 @@ over-segment healthy parenchyma under this probe. Under the same prompts,
 the healthy-prior model is more conservative: competitive Dice when an
 anomaly is present, and less spurious predicted volume when it is not
 (Table~\ref{tab:healthy_fp}).
-Figure~\ref{fig:qual-fp} (Supplementary Material) illustrates empty-GT random boxes where
-SAM-Med2D / SAM-Med3D / SegVol often paint lime masks inside the prompt,
-whereas Ours remains sparse.
+\suppFigQualFP{} in the Supplementary Material illustrates empty-GT
+random boxes where SAM-Med2D / SAM-Med3D / SegVol often paint lime masks
+inside the prompt, whereas Ours remains sparse.
 
 \subsection{Generalization: MAISI and NSCLC}
-Table~\ref{tab:cross} and Figures~\ref{fig:bench}--\ref{fig:bench-per}
-(Supplementary Material) report mean Dice under the same matched-box protocol on
-MAISI~\citep{maisi2025} and NSCLC-Radiomics~\citep{aerts2014nsclc},
-with LIDC repeated for reference. Ours remains in a competitive tier on
-all three sets (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step,
-\(R{=}1\)): within rounding of nnInteractive on MAISI (both \(0.71\) at
-two decimals; nnInteractive slightly higher before rounding) and within
-\(0.01\) Dice of the best NSCLC entry (\(0.78\) vs.\ \(0.79\)).
-Figures~\ref{fig:qual-cross} and~\ref{fig:qual-nsclc-vol}
-(Supplementary Material) show corresponding overlays on MAISI
-synthetic nodules, matched NSCLC \(64^3\) tumor patches, and the
-same NSCLC cases as full-volume slices. The qualitative pattern is consistent with the
-tables under matched boxes, suggesting the healthy-prior residual is
-not an LIDC-only artifact.
+Table~\ref{tab:cross} reports mean Dice under the same matched-box
+protocol on MAISI~\citep{maisi2025} and
+NSCLC-Radiomics~\citep{aerts2014nsclc}, with LIDC repeated for
+reference; \suppFigBench{} and \suppFigBenchPer{} in the Supplementary
+Material visualize the same comparison.
+Ours remains in a competitive tier on all three sets
+(MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step, \(R{=}1\)): within
+rounding of nnInteractive on MAISI (both \(0.71\) at two decimals;
+nnInteractive slightly higher before rounding) and within \(0.01\) Dice
+of the best NSCLC entry (\(0.78\) vs.\ \(0.79\)).
+\suppFigQualCross{} and \suppFigQualNSCLC{} in the Supplementary Material
+show corresponding overlays on MAISI synthetic nodules, matched NSCLC
+\(64^3\) tumor patches, and the same NSCLC cases as full-volume slices.
+The qualitative pattern is consistent with the tables under matched
+boxes, suggesting the healthy-prior residual is not an LIDC-only
+artifact.
 
 \begin{table}[t]
 \centering
@@ -831,12 +843,12 @@ VISTA3D       & 0.19 & 0.45 & 0.12 \\
 \end{table}
 
 \subsection{Ablation: Steps and Refine Rounds}
-Table~\ref{tab:ablation} and Figures~\ref{fig:ablation}
-and~\ref{fig:qual-ablation} (Supplementary Material) vary
-inference steps and refine rounds \(R\) on the LIDC positive set
-(same checkpoint). Moderate compute (\(40\) steps, \(R{=}2\)) is
-sufficient for near-peak Dice; several \(R{=}3\) settings underperform the main \(R{=}2\) operating point,
-and \(80\)-step/\(R{=}2\) also does not beat it.
+\suppTabAblation{}, \suppFigAblation{}, and \suppFigQualAblation{} in
+the Supplementary Material vary inference steps and refine rounds \(R\)
+on the LIDC positive set (same checkpoint). Moderate compute
+(\(40\) steps, \(R{=}2\)) is sufficient for near-peak Dice; several
+\(R{=}3\) settings underperform the main \(R{=}2\) operating point, and
+\(80\)-step/\(R{=}2\) also does not beat it.
 
 \subsection{Discussion}
 Across Table~\ref{tab:main} and
@@ -847,15 +859,14 @@ volume on the healthy random-box probe
 (Table~\ref{tab:healthy_fp}; \(1076\,\mathrm{mm}^3\) vs.\ \(1980\) for
 SAM-Med2D and \(4015\) for nnInteractive under the same \(40\)-step/\(R{=}2\)
 row). Cross-dataset Dice
-(Table~\ref{tab:cross}; Figures~\ref{fig:bench}--\ref{fig:bench-per},
-Supplementary Material)
+(Table~\ref{tab:cross}; \suppFigBench{}--\suppFigBenchPer{})
 places Ours in a similar competitive tier on MAISI and NSCLC under matched
 boxes, without ranking first on every column. The ablation
-(Table~\ref{tab:ablation}, Figures~\ref{fig:ablation} and
-\ref{fig:qual-ablation}; Supplementary Material) indicates that additional sampling steps beyond this
-point yield little further Dice gain on LIDC. Qualitative overlays
-(Figure~\ref{fig:qual-lidc}; Figures~\ref{fig:qual-fp},~\ref{fig:qual-cross},
-and~\ref{fig:qual-nsclc-vol} in the Supplementary Material) illustrate the same pattern under matched
+(\suppTabAblation{}, \suppFigAblation{}, \suppFigQualAblation{})
+indicates that additional sampling steps beyond this point yield little
+further Dice gain on LIDC. Qualitative overlays
+(Figure~\ref{fig:qual-lidc}; \suppFigQualFP{}, \suppFigQualCross{}, and
+\suppFigQualNSCLC{}) illustrate the same pattern under matched
 prompts: competitive recovery on positive cases, sparser predictions on
 healthy prompts relative to several object-centric baselines, and transfer
 without lesion-mask supervision. These results support the reframing in
