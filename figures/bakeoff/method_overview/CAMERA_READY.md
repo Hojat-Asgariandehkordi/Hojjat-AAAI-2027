@@ -15,4 +15,6 @@ nninteractive python figures/make_method_overview_v2.py
 # then sync bakeoff mirrors / drawio embeds as needed
 ```
 
-**Equations in draw.io:** HTML/Unicode math beside blocks (bold-italic vectors, subscripts); no MathJax `$$...$$`. Paper PDF uses `figures/fig_method_overview_2.pdf` from `make_method_overview_v2.py`.
+**Equations in draw.io:** MathJax `$$...$$` beside blocks (Extras → Mathematical Typesetting).
+Paste-ready LaTeX: `DRAWIO_EQUATIONS.md` (aligned with the paper path/loss/inject/sampler/residual/update eqs).
+Paper PDF uses `figures/fig_method_overview_2.pdf` from `make_method_overview_v2.py`.

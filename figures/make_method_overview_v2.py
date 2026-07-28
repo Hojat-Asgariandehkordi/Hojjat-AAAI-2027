@@ -233,19 +233,20 @@ def draw() -> None:
         ax,
         centers_t[2][0],
         y_math_t,
-        r"$\mathbf{x}_t=(1-t/T)\mathbf{x}_0+(t/T)\boldsymbol{\varepsilon}$"
+        r"$\mathbf{x}_t=(1-s)\mathbf{x}_0+s\boldsymbol{\varepsilon},\ s=t/T$"
         "\n"
-        r"$\mathbf{u}(\mathbf{x}_t,t)=\mathbf{x}_0-\boldsymbol{\varepsilon}$",
+        r"$\mathbf{u}=\mathrm{d}\mathbf{x}_t/\mathrm{d}s=\mathbf{x}_0-\boldsymbol{\varepsilon}$",
         color=C_TRAIN,
-        fs=5.4,
+        fs=5.2,
     )
     _math_note(
         ax,
         centers_t[3][0],
         y_math_t,
-        r"$\mathcal{L}(\theta)=\mathbb{E}[\|v_\theta(\mathbf{x}_t,t)-\mathbf{u}\|_1]$",
+        r"$\mathcal{L}(\theta)=\mathbb{E}[\|v_\theta(\mathbf{x}_t,t)"
+        r"-(\mathbf{x}_0-\boldsymbol{\varepsilon})\|_1]$",
         color=C_TRAIN,
-        fs=5.4,
+        fs=5.2,
     )
 
     # short solid marker: prior is used at inference (no long dashed curve)
@@ -360,11 +361,14 @@ def draw() -> None:
         ax,
         centers_i[3][0],
         y_math_i,
-        r"$\mathbf{x}_t\!\leftarrow\!\mathbf{m}\odot\tilde{\mathbf{x}}_t(\mathbf{x}_0)+(1-\mathbf{m})\odot\mathbf{x}_t$"
+        r"$\mathbf{x}_t\!\leftarrow\!\mathbf{m}\odot\tilde{\mathbf{x}}_t(\mathbf{x}_0)"
+        r"+(1-\mathbf{m})\odot\mathbf{x}_t$"
         "\n"
-        r"$\mathbf{x}_t\!\leftarrow\!\mathbf{x}_t+v_\theta(\mathbf{x}_t,t)\,\Delta t$",
+        r"$\mathbf{x}_t\!\leftarrow\!\mathbf{x}_t+v_\theta(\mathbf{x}_t,t)\,\Delta s$"
+        "\n"
+        r"$\Delta s=(t-t_{\mathrm{next}})/T$",
         color=C_INFER,
-        fs=4.9,
+        fs=4.7,
     )
     _math_note(
         ax,
@@ -386,7 +390,7 @@ def draw() -> None:
         ax,
         centers_i[6][0],
         y_math_i,
-        r"$\mathbf{h}^{(r+1)}=\mathbf{1}[\mathbf{d}^{(r)}>\tau]$"
+        r"$\mathbf{h}'=\mathbb{1}[\mathbf{d}^{(r)}>\tau]$"
         "\n"
         r"$\odot\,\mathrm{Dilate}(\mathbf{h}^{(r)};\rho)$",
         color=C_LOOP,
@@ -450,7 +454,7 @@ def draw() -> None:
         ax,
         strip_x + strip_w / 2,
         y_strip + strip_h - 0.28,
-        r"$\mathbf{h}^{(r+1)}=\mathbf{1}[\mathbf{d}^{(r)}>\tau]\odot\mathrm{Dilate}(\mathbf{h}^{(r)};\rho),"
+        r"$\mathbf{h}'=\mathbb{1}[\mathbf{d}^{(r)}>\tau]\odot\mathrm{Dilate}(\mathbf{h}^{(r)};\rho),"
         r"\ \ \hat{\mathbf{y}}=\mathbf{h}^{(R)}$",
         color=C_LOOP,
         fs=5.7,
