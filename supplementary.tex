@@ -60,14 +60,17 @@
 
 This supplementary document provides the iterative refinement algorithm,
 default hyperparameters, additional qualitative and cross-dataset figures,
-and the inference-step~/~refine-round ablation referenced in the main paper.
+the inference-step~/~refine-round ablation referenced in the main paper,
+and a cross-dataset healthy false-positive probe.
 For convenience we summarize the mapping used in the main text:
 Algorithm~S1 (residual mask refinement),
 Table~S1 (hyperparameters),
-Figure~S1 (healthy-FP qualitative),
+Figure~S1 (LIDC healthy-FP qualitative),
 Figures~S2--S3 (cross-dataset Dice bars),
-Figures~S4--S5 (MAISI~/~NSCLC qualitative),
+Figures~S4--S5 (MAISI~/~NSCLC true-nodule qualitative),
 Table~S2 and Figures~S6--S7 (ablation).
+Additional material not cited from the main text:
+Table~S3 and Figures~S8--S11 (MAISI~/~NSCLC healthy-FP probe).
 
 \section{Iterative Residual Mask Refinement}
 \label{sec:supp:alg}
@@ -245,6 +248,98 @@ Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
   Table~\ref{tab:ablation}. Contours tighten from \(30\)-step to the
   main \(40\)-step/\(R{=}2\) config and then remain stable.}
   \label{fig:qual-ablation}
+\end{figure*}
+
+\section{Cross-Dataset Healthy False-Positive Probe}
+\label{sec:supp:healthy-fp-cross}
+
+We repeat the LIDC healthy false-positive protocol
+(Table~\ref{tab:healthy_fp} in the main paper) on nodule-free MAISI
+and NSCLC patches: random lung boxes (same size prior and seed),
+empty GT, and mean predicted mask volume (mm\(^3\)).
+Table~\ref{tab:healthy-fp-cross} reports aggregate volumes;
+Figures~\ref{fig:fp-tradeoff-maisi}--\ref{fig:fp-tradeoff-nsclc}
+show the volume bars and true-nodule Dice vs.\ FP-volume trade-offs;
+Figures~\ref{fig:qual-fp-maisi}--\ref{fig:qual-fp-nsclc} give
+qualitative overlays (yellow~=~prompt box, lime~=~prediction).
+Ours uses the same dataset-specific RF settings as Table~\ref{tab:cross}
+(MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step, \(R{=}1\)).
+Across both sets, Ours remains the lowest-\emph{non-silent} volume among
+methods that stay competitive on true nodules; VISTA3D is silent
+(\(0\,\mathrm{mm}^3\)) but weak on positive Dice
+(Table~\ref{tab:cross}). SAM-Med3D returns an empty mask on
+\(\sim\)1\% of prompts (same rate as LIDC); those rows are present with
+zero volume rather than missing.
+
+\begin{table*}[t]
+\centering
+\caption{Healthy false-positive probe on MAISI (\(N{=}2848\)) and
+NSCLC (\(N{=}2720\)) nodule-free patches: mean predicted volume
+(mm\(^3\)). Lowest non-silent volume per column in \textbf{bold}.
+Dice against empty GT is omitted.}
+\label{tab:healthy-fp-cross}
+\begin{tabular}{lcc}
+\toprule
+Method & MAISI vol.\ (mm\(^3\)) \(\downarrow\) &
+NSCLC vol.\ (mm\(^3\)) \(\downarrow\) \\
+\midrule
+VISTA3D$^\dagger$
+  & \(0\) & \(0\) \\
+\textbf{Ours}
+  & \textbf{958} & \textbf{1405} \\
+SegVol
+  & 1567 & 1583 \\
+SAM-Med2D
+  & 2016 & 1965 \\
+SAM-Med3D
+  & 2780 & 2972 \\
+nnInteractive
+  & 4168 & 4102 \\
+\bottomrule
+\end{tabular}\\[0.25em]
+{\footnotesize $^\dagger$Near-silent on healthy prompts (cf.\
+Table~\ref{tab:cross} for true-nodule Dice).
+Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
+\end{table*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_healthy_fp_tradeoff_maisi.pdf}
+  \caption{Healthy FP probe on MAISI:
+  (a)~mean predicted volume under random empty-GT boxes;
+  (b)~MAISI true-nodule Dice vs.\ healthy FP volume.
+  Silent models (e.g., VISTA3D) sit at zero volume but low positive Dice
+  (Table~\ref{tab:cross}).}
+  \label{fig:fp-tradeoff-maisi}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_healthy_fp_tradeoff_nsclc.pdf}
+  \caption{Healthy FP probe on NSCLC under the same protocol as
+  Figure~\ref{fig:fp-tradeoff-maisi}
+  (Ours \(60\)-step, \(R{=}1\); Table~\ref{tab:healthy-fp-cross}).}
+  \label{fig:fp-tradeoff-nsclc}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp_maisi.pdf}
+  \caption{MAISI healthy false-positive probe: random boxes in
+  nodule-free patches (yellow~=~prompt, lime~=~prediction; GT empty).
+  Columns: CT+box, SAM-Med2D, SAM-Med3D, SegVol, VISTA3D, nnInteractive,
+  Ours (\(60\)-step, \(R{=}3\)). Object-centric baselines often fill the
+  box; Ours is more conservative (Table~\ref{tab:healthy-fp-cross}).}
+  \label{fig:qual-fp-maisi}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp_nsclc.pdf}
+  \caption{NSCLC healthy false-positive probe under the same protocol
+  (Ours \(60\)-step, \(R{=}1\)). Layout matches
+  Figure~\ref{fig:qual-fp-maisi}; see Table~\ref{tab:healthy-fp-cross}.}
+  \label{fig:qual-fp-nsclc}
 \end{figure*}
 
 \end{document}
