@@ -57,8 +57,8 @@
 \setcounter{secnumdepth}{1}
 
 % ── Title / Author (anonymous) ────────────────────────────────
-\title{Weakly-Supervised 3D Anomaly Segmentation via\\
-       Region-Prompted Rectified-Flow Inpainting}
+\title{Region Prompted Unsupervised Lung Anomaly Segmentation via\\
+       Rectified-Flow Inpainting}
 
 \author{
     Anonymous Submission
@@ -73,7 +73,7 @@
 
 % =============================================================
 \begin{abstract}
-In lung CT CAD, a candidate region is often already available from a detector, a radiologist, or a coarse clinical cue such as a slice-wise bounding box, and the remaining task is to decide whether that region contains abnormal tissue and, if so, where. Interactive foundation models address this setting with box or point prompts, but they segment ``the object in the box'' by boundary contrast and have no explicit model of healthy parenchyma; they can therefore emit confident masks even on entirely normal lung. We reframe the problem as \emph{region-prompted anomaly verification}. A 3D rectified-flow model is trained only on nodule-free patches to learn a generative prior of healthy tissue. At inference, the same weak boxes used by interactive segmenters define an inpainting hole; RePaint-style known-region injection synthesizes a healthy counterfactual, and the residual against the observation localizes the anomaly. Iterative residual refinement sharpens the mask without using lesion masks during training. Under matched box prompts on LIDC-IDRI, our method matches the strongest interactive baseline on true-nodule Dice (\(0.73\)) while producing substantially less spurious mask volume on a healthy false-positive probe (random boxes in nodule-free lung: \(1076\,\mathrm{mm}^3\) vs.\ \(1980\) for SAM-Med2D and \(4015\) for nnInteractive under the reported \(40\)-step/\(R{=}2\) configuration). The same competitive tier holds on MAISI and NSCLC under the same protocol. These results support generative healthy inpainting as a complementary alternative to interactive object segmentation when a low false-positive rate is critical.
+In lung CT CAD, a candidate region is often already available from a detector, a radiologist, or a coarse clinical cue such as a slice-wise bounding box, and the remaining task is to decide whether that region contains abnormal tissue and, if so, where. Interactive foundation models address this setting with box or point prompts, but they segment ``the object in the box'' by boundary contrast and have no explicit model of healthy parenchyma; they can therefore emit confident masks even on entirely normal lung. We reframe the problem as \emph{region-prompted anomaly verification}. A 3D rectified-flow model is trained only on nodule-free patches to learn a generative prior of healthy tissue. At inference, the same weak boxes used by interactive segmenters define an inpainting hole; RePaint-style known-region injection synthesizes a healthy counterfactual, and the residual against the observation localizes the anomaly. Iterative residual refinement sharpens the mask without using lesion masks during training. Under matched box prompts on LIDC-IDRI, our method matches the strongest interactive baseline on true-nodule Dice (\(0.73\)) while producing substantially less spurious mask volume on a healthy false-positive probe (random boxes in nodule-free lung: \(1076\,\mathrm{mm}^3\) vs.\ \(1980\) for SAM-Med2D and \(4015\) for nnInteractive under the reported our best configuration). The same competitive tier holds on MAISI and NSCLC under the same protocol. These results support generative healthy inpainting as a complementary alternative to interactive object segmentation when a low false-positive rate is critical.
 \end{abstract}
 
 % =============================================================
@@ -81,9 +81,9 @@ In lung CT CAD, a candidate region is often already available from a detector, a
 \label{sec:intro}
 
 In lung CT, many practical CAD pipelines do not search the entire
-volume blindly: a candidate region is first proposed---by a
+volume blindly: a candidate region is first proposed, by a
 detector, a radiologist, or a coarse clinical cue such as a
-slice-wise bounding box---and a second stage must decide
+slice-wise bounding box, and a second stage must decide
 \emph{whether} that region contains abnormal tissue and, if so,
 \emph{where}. Dense voxel masks remain expensive to annotate at
 scale, so this second stage is increasingly driven by
@@ -95,7 +95,7 @@ These models are trained as general object segmenters: given a prompt,
 they extract ``the object in the box'' by boundary contrast, without an
 explicit notion of healthy lung parenchyma. As a result, they can produce
 confident masks even when the prompted region is entirely
-normal---a failure mode that is especially damaging for screening and
+normal, a failure mode that is especially damaging for screening and
 triage, where false positives drive unnecessary follow-up. The issue is
 acute for small or low-contrast findings, where intensity boundaries are
 weak, but it also appears whenever a box is placed on healthy tissue.
@@ -109,8 +109,8 @@ mask-guided sampling. The residual between the observation and this
 healthy counterfactual localizes the anomaly; an iterative refinement
 loop updates the hole where large residuals persist, yielding a
 voxel-level mask without lesion masks at training time. Because the model
-asks whether the region can be explained as healthy---rather than what
-object lies inside the box---it is more conservative on normal parenchyma.
+asks whether the region can be explained as healthy, rather than what
+object lies inside the box, it is more conservative on normal parenchyma.
 
 \paragraph{Contributions.}
 \begin{itemize}
@@ -130,8 +130,8 @@ object lies inside the box---it is more conservative on normal parenchyma.
     Under matched box prompts on LIDC-IDRI, we compare against
     contemporary interactive models (SAM-Med2D/3D, SegVol, VISTA3D,
     nnInteractive). Beyond overlap metrics, we emphasize a
-    \emph{healthy false-positive} probe---random boxes in nodule-free
-    lung---where object-centric segmenters often still fire while the
+    \emph{healthy false-positive} probe, random boxes in nodule-free
+    lung, where object-centric segmenters often still fire while the
     healthy-prior model remains more conservative.
 \end{itemize}
 
@@ -150,7 +150,7 @@ These systems excel when a contrasted object is present, but they
 implement \emph{object} segmentation: the prompt selects what to cut
 out, not whether anything abnormal is there.
 They therefore lack an explicit healthy-tissue prior and can emit
-confident masks on entirely normal parenchyma---the failure mode our
+confident masks on entirely normal parenchyma, the failure mode our
 healthy false-positive probe targets.
 We reuse the same weak box prompts, but score residual disagreement
 with a generative model of healthy lung.
@@ -167,7 +167,7 @@ rectified-flow generator (on LUNA16~\citep{luna2017}) toward nodule-free
 counterfactuals under weak cues.
 We instead train an \emph{unconditional healthy-only} prior, treat the
 prompt as a RePaint-style~\citep{lugmayr2022repaint} inpainting hole,
-and iteratively refine that hole from the residual---without lesion
+and iteratively refine that hole from the residual, without lesion
 masks at training time.
 
 \paragraph{Generative medical anomaly detection.}
@@ -199,7 +199,7 @@ flow~\citep{lipman2023flowmatching,liu2023flow} provide high-fidelity
 priors with straighter sampling paths.
 We combine these ingredients for \emph{region-prompted anomaly
 verification}: a 3D rectified-flow prior of healthy lung, box-defined
-holes, residual readout, and iterative refinement---a complementary
+holes, residual readout, and iterative refinement, a complementary
 alternative to interactive object segmenters when low false-positive
 rate matters.
 
@@ -232,7 +232,7 @@ axial slices from LIDC \(64^{3}\) patches.
   the residual \(|\mathbf{x}_0-\hat{\mathbf{x}}|\) is thresholded and refined
   for \(R\) rounds (RF path, RePaint inject, residual, and dilation update
   shown beside the blocks).
-  \textbf{Bottom:} mask refinement---initial box mask, then Iteration~1
+  \textbf{Bottom:} mask refinement, initial box mask, then Iteration~1
   and Iteration~2 masks (lime contours).
   Panels show three consecutive axial slices.}
   \label{fig:method}
@@ -497,9 +497,9 @@ in~\eqref{eq:sampler} lands exactly on the same interpolant at time
 \begin{proof}
 With \(s_k=t_k/T\) and \(\Delta s_k=s_k-s_{k+1}\),
 \begin{align*}
-\mathbf{x}_{t_k}+\Delta s_k\,(\mathbf{x}_0^\star-\boldsymbol{\varepsilon})
+\mathbf{x}_{t_k}+\Delta s_k\,(\mathbf{x}_0^\star-\boldsymbol{\varepsilon})\\
 &=
-(1-s_k)\mathbf{x}_0^\star+s_k\boldsymbol{\varepsilon}
+(1-s_k)\mathbf{x}_0^\star+s_k\boldsymbol{\varepsilon}\\
 +(s_k-s_{k+1})\bigl(\mathbf{x}_0^\star-\boldsymbol{\varepsilon}\bigr)\\
 &=
 (1-s_{k+1})\mathbf{x}_0^\star+s_{k+1}\boldsymbol{\varepsilon}.
@@ -737,7 +737,7 @@ VISTA3D$^\dagger$
 true nodules.}
 \end{table*}
 
-\paragraph{Takeaway.}
+%\paragraph{Takeaway.}
 On true nodules, healthy-counterfactual inpainting matches strong
 2D interactive segmentation and is competitive with or stronger than
 the native-3D promptable models under the same boxes, while remaining
@@ -767,7 +767,7 @@ the box, and SegVol / VISTA3D can leave incomplete masks.
   \label{fig:fp-tradeoff}
 \end{figure}
 
-\paragraph{Takeaway.}
+%\paragraph{Takeaway.}
 Interactive segmenters optimize objectness inside the box and often
 over-segment healthy parenchyma under this probe. Under the same prompts,
 the healthy-prior model is more conservative: competitive Dice when an
@@ -892,8 +892,8 @@ work.
 \end{itemize}
 
 \subsection{Conclusion}
-We reframed weakly supervised lung anomaly segmentation---weak in the
-sense of box prompts at inference, with no lesion masks at training---as
+We reframed region prompted unsupervised lung anomaly segmentation, unsupervised in the
+sense of box prompts at inference, with no lesion masks at training, as
 \emph{region-prompted anomaly verification}: learn a 3D rectified-flow
 prior of healthy parenchyma, treat interactive boxes as inpainting holes,
 and localize anomalies as residuals against the healthy counterfactual,
@@ -906,10 +906,11 @@ nnInteractive under the reported \(40\)-step/\(R{=}2\) configuration).
 These results support generative healthy inpainting as a complementary
 alternative to interactive object segmentation when a low false-positive
 rate is critical in lung CT CAD.
-
+\noindent
+\emph{Disclaimer:}  OpenAI’s ChatGPT was used to assist with writing and editing. The authors reviewed and verified all content and accept full responsibility for the final manuscript.
 % =============================================================
-\section*{Acknowledgments}
-[Omitted for anonymous review.]
+%\section*{Acknowledgments}
+%[Omitted for anonymous review.]
 
 % =============================================================
 \bibliography{AAAI2027_paper}
