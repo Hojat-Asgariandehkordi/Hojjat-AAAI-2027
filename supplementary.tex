@@ -28,13 +28,14 @@
 \usepackage{bm}
 \usepackage{xcolor}
 \usepackage{multirow}
+\usepackage{placeins}
 
-% Cross-references to the main paper (either filename)
+% Cross-references to the main paper (compile main.tex first)
 \usepackage{xr}
 \externaldocument{main}
 \externaldocument{AAAI2027_paper}
 
-% Supplementary numbering
+% Supplementary numbering (matches macros in main.tex)
 \renewcommand{\thefigure}{S\arabic{figure}}
 \renewcommand{\thetable}{S\arabic{table}}
 \renewcommand{\thealgorithm}{S\arabic{algorithm}}
@@ -58,24 +59,59 @@
 \begin{document}
 \maketitle
 
-This supplementary document provides the iterative refinement algorithm,
-default hyperparameters, additional qualitative and cross-dataset figures,
-the inference-step~/~refine-round ablation referenced in the main paper,
-and a cross-dataset healthy false-positive probe.
-For convenience we summarize the mapping used in the main text:
-Algorithm~S1 (residual mask refinement),
+This supplementary document provides the material referenced from the
+main text, in the same order as the S-number macros there:
 Table~S1 (hyperparameters),
+Algorithm~S1 (residual mask refinement),
 Figure~S1 (LIDC healthy-FP qualitative),
 Figures~S2--S3 (cross-dataset Dice bars),
 Figures~S4--S5 (MAISI~/~NSCLC true-nodule qualitative),
 Table~S2 and Figures~S6--S7 (ablation).
-Additional material not cited from the main text:
-Table~S3 and Figures~S8--S11 (MAISI~/~NSCLC healthy-FP probe).
+We also include an additional cross-dataset healthy false-positive
+probe (Table~S3, Figures~S8--S11) not cited from the main text.
 
+% ----------------------------------------------------------------------
+\section{Default Hyperparameters}
+\label{sec:supp:hparams}
+% ----------------------------------------------------------------------
+Table~\ref{tab:hparams} lists the default settings referenced as
+Table~S1 in the main paper.
+
+\begin{table}[t]
+\centering
+\caption{Default hyperparameters used in our method.}
+\label{tab:hparams}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Patch size & \(64\times 64\times 64\) \\
+Spacing & \(0.7\times 0.7\times 1.5\,\mathrm{mm}\) \\
+HU window & \([-1000,\,400]\) \\
+Scheduler & Rectified flow (continuous) \\
+Train timesteps \(T\) & \(1000\) \\
+U-Net channels & \([64,128,128,128]\) \\
+Objective & \(\ell_1\) velocity regression \\
+Learning rate & \(10^{-4}\) \\
+Inference steps \(N\) & \(40\) \\
+Refine rounds \(R\) & \(2\) \\
+Residual threshold \(\tau\) & \(0.05\) \\
+Search dilation \(\rho\) & \(2\) \\
+Box padding \(p\) & \(2\) voxels \\
+Min.\ hole voxels \(\eta\) & \(8\) \\
+Morphology & off \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+% ----------------------------------------------------------------------
 \section{Iterative Residual Mask Refinement}
 \label{sec:supp:alg}
-Algorithm~\ref{alg:refine} summarizes the residual-driven refine loop used
-at inference (Eqs.~\eqref{eq:inject}--\eqref{eq:update} in the main paper).
+% ----------------------------------------------------------------------
+Algorithm~\ref{alg:refine} (Algorithm~S1 in the main paper) summarizes
+the residual-driven refine loop used at inference
+(Eqs.~\eqref{eq:inject}--\eqref{eq:update} in the main paper).
 
 \begin{algorithm}[t]
 \caption{Iterative residual mask refinement for nodule localization}
@@ -110,51 +146,27 @@ $\rho$, min.\ voxels $\eta$
 \STATE \textbf{return} $\hat{\mathbf{y}} \gets \mathbf{h}^{(R)}$
 \end{algorithmic}
 \end{algorithm}
+\FloatBarrier
 
-\section{Default Hyperparameters}
-\begin{table}[h]
-\centering
-\caption{Default hyperparameters used in our method.}
-\label{tab:hparams}
-\begin{tabular}{@{}ll@{}}
-\toprule
-\textbf{Setting} & \textbf{Value} \\
-\midrule
-Patch size & \(64\times 64\times 64\) \\
-Spacing & \(0.7\times 0.7\times 1.5\,\mathrm{mm}\) \\
-HU window & \([-1000,\,400]\) \\
-Scheduler & Rectified flow (continuous) \\
-Train timesteps \(T\) & \(1000\) \\
-U-Net channels & \([64,128,128,128]\) \\
-Objective & \(\ell_1\) velocity regression \\
-Learning rate & \(10^{-4}\) \\
-Inference steps \(N\) & \(40\) \\
-Refine rounds \(R\) & \(2\) \\
-Residual threshold \(\tau\) & \(0.05\) \\
-Search dilation \(\rho\) & \(2\) \\
-Box padding \(p\) & \(2\) voxels \\
-Min.\ hole voxels \(\eta\) & \(8\) \\
-Morphology & off \\
-\bottomrule
-\end{tabular}
-\end{table}
-
+% ----------------------------------------------------------------------
 \section{Additional Qualitative and Cross-Dataset Figures}
 \label{sec:supp:extra-figs}
-
-Figure~\ref{fig:qual-fp} shows healthy false-positive probe overlays.
-Figures~\ref{fig:bench}--\ref{fig:bench-per} visualize cross-dataset Dice
-from Table~\ref{tab:cross} in the main paper.
-Figures~\ref{fig:qual-cross} and~\ref{fig:qual-nsclc-vol} provide
-matched-box qualitative overlays on MAISI and NSCLC.
+% ----------------------------------------------------------------------
+Figure~\ref{fig:qual-fp} is Figure~S1 in the main paper (healthy FP
+overlays).
+Figures~\ref{fig:bench}--\ref{fig:bench-per} are Figures~S2--S3
+(cross-dataset Dice).
+Figures~\ref{fig:qual-cross}--\ref{fig:qual-nsclc-vol} are
+Figures~S4--S5 (MAISI~/~NSCLC qualitative).
 
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp.pdf}
   \caption{Healthy false-positive probe: random boxes in nodule-free
   lung (yellow~=~prompt contour, green~=~predicted mask fill; GT empty).
-  Columns match Figure~\ref{fig:qual-lidc}. Object-centric baselines often
-  fill the box; Ours (\(60\)-step, \(R{=}3\); Table~\ref{tab:healthy_fp})
+  Columns match Figure~\ref{fig:qual-lidc} in the main paper.
+  Object-centric baselines often fill the box; Ours
+  (\(60\)-step, \(R{=}3\); Table~\ref{tab:healthy_fp} in the main paper)
   is more conservative.}
   \label{fig:qual-fp}
 \end{figure*}
@@ -163,7 +175,8 @@ matched-box qualitative overlays on MAISI and NSCLC.
   \centering
   \includegraphics[width=\textwidth]{figures/fig_benchmark_dice_3datasets.pdf}
   \caption{Mean Dice under matched box prompts on LIDC, MAISI, and
-  NSCLC (grouped by method). Hatched bars highlight Ours.}
+  NSCLC (grouped by method). Hatched bars highlight Ours.
+  Aggregate numbers match Table~\ref{tab:cross} in the main paper.}
   \label{fig:bench}
 \end{figure*}
 
@@ -185,7 +198,7 @@ matched-box qualitative overlays on MAISI and NSCLC.
   Bottom: NSCLC-Radiomics \(64^3\) tumor patches (Ours \(60\)-step, \(R{=}1\);
   cases LUNG1-024 / 145 / 098 / 173).
   Illustrative examples under matched boxes; see Table~\ref{tab:cross}
-  for aggregate Dice.}
+  in the main paper for aggregate Dice.}
   \label{fig:qual-cross}
 \end{figure*}
 
@@ -199,12 +212,15 @@ matched-box qualitative overlays on MAISI and NSCLC.
   these volumes.}
   \label{fig:qual-nsclc-vol}
 \end{figure*}
+\FloatBarrier
 
+% ----------------------------------------------------------------------
 \section{Ablation: Steps and Refine Rounds}
 \label{sec:supp:ablation}
-
+% ----------------------------------------------------------------------
 Table~\ref{tab:ablation} and Figures~\ref{fig:ablation}
-and~\ref{fig:qual-ablation} vary inference steps and refine rounds \(R\)
+and~\ref{fig:qual-ablation} are Table~S2 and Figures~S6--S7 in the
+main paper. They vary inference steps and refine rounds \(R\)
 on the LIDC positive set (same checkpoint). Moderate compute
 (\(40\) steps, \(R{=}2\)) is sufficient for near-peak Dice; several
 \(R{=}3\) settings underperform the main \(R{=}2\) operating point, and
@@ -249,10 +265,12 @@ Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
   main \(40\)-step/\(R{=}2\) config and then remain stable.}
   \label{fig:qual-ablation}
 \end{figure*}
+\FloatBarrier
 
+% ----------------------------------------------------------------------
 \section{Cross-Dataset Healthy False-Positive Probe}
 \label{sec:supp:healthy-fp-cross}
-
+% ----------------------------------------------------------------------
 We repeat the LIDC healthy false-positive protocol
 (Table~\ref{tab:healthy_fp} in the main paper) on nodule-free MAISI
 and NSCLC patches: random lung boxes (same size prior and seed),
@@ -262,14 +280,15 @@ Figures~\ref{fig:fp-tradeoff-maisi}--\ref{fig:fp-tradeoff-nsclc}
 show the volume bars and true-nodule Dice vs.\ FP-volume trade-offs;
 Figures~\ref{fig:qual-fp-maisi}--\ref{fig:qual-fp-nsclc} give
 qualitative overlays (yellow~=~prompt box, lime~=~prediction).
-Ours uses the same dataset-specific RF settings as Table~\ref{tab:cross}
+Ours uses the same dataset-specific RF settings as
+Table~\ref{tab:cross} in the main paper
 (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step, \(R{=}1\)).
 Across both sets, Ours remains the lowest-\emph{non-silent} volume among
 methods that stay competitive on true nodules; VISTA3D is silent
 (\(0\,\mathrm{mm}^3\)) but weak on positive Dice
-(Table~\ref{tab:cross}). SAM-Med3D returns an empty mask on
-\(\sim\)1\% of prompts (same rate as LIDC); those rows are present with
-zero volume rather than missing.
+(Table~\ref{tab:cross} in the main paper). SAM-Med3D returns an empty
+mask on \(\sim\)1\% of prompts (same rate as LIDC); those rows are
+present with zero volume rather than missing.
 
 \begin{table*}[t]
 \centering
@@ -298,7 +317,7 @@ nnInteractive
 \bottomrule
 \end{tabular}\\[0.25em]
 {\footnotesize $^\dagger$Near-silent on healthy prompts (cf.\
-Table~\ref{tab:cross} for true-nodule Dice).
+Table~\ref{tab:cross} in the main paper for true-nodule Dice).
 Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
 \end{table*}
 
@@ -309,7 +328,7 @@ Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
   (a)~mean predicted volume under random empty-GT boxes;
   (b)~MAISI true-nodule Dice vs.\ healthy FP volume.
   Silent models (e.g., VISTA3D) sit at zero volume but low positive Dice
-  (Table~\ref{tab:cross}).}
+  (Table~\ref{tab:cross} in the main paper).}
   \label{fig:fp-tradeoff-maisi}
 \end{figure*}
 
