@@ -30,10 +30,16 @@
 \usepackage{multirow}
 \usepackage{placeins}
 
-% Cross-references to the main paper (compile main.tex first)
-\usepackage{xr}
-\externaldocument{main}
-\externaldocument{AAAI2027_paper}
+% Hardcoded pointers into the compiled main paper.
+% (Overleaf often compiles the supplementary without a usable main.aux,
+%  so \eqref/\ref via xr show as ``?''.)
+\newcommand{\mainEqInject}{(6)}
+\newcommand{\mainEqSampler}{(7)}
+\newcommand{\mainEqResidual}{(9)}
+\newcommand{\mainEqUpdate}{(10)}
+\newcommand{\mainTabHealthyFP}{Table~1}
+\newcommand{\mainTabCross}{Table~2}
+\newcommand{\mainFigQualLIDC}{Figure~2}
 
 % Supplementary numbering (matches macros in main.tex)
 \renewcommand{\thefigure}{S\arabic{figure}}
@@ -111,7 +117,7 @@ Morphology & off \\
 % ----------------------------------------------------------------------
 Algorithm~\ref{alg:refine} (Algorithm~S1 in the main paper) summarizes
 the residual-driven refine loop used at inference
-(Eqs.~\eqref{eq:inject}--\eqref{eq:update} in the main paper).
+(Eqs.~\mainEqInject{}--\mainEqUpdate{} in the main paper).
 
 \begin{algorithm}[t]
 \caption{Iterative residual mask refinement for nodule localization}
@@ -125,17 +131,17 @@ $\rho$, min.\ voxels $\eta$
 \STATE $\mathbf{m}^{(r)} \gets 1-\mathbf{h}^{(r)}$
 \STATE $\hat{\mathbf{x}}^{(r)} \gets \mathcal{G}_\theta\!\bigl(
   \mathbf{x}_0,\,\mathbf{m}^{(r)}\bigr)$
-  \COMMENT{Eqs.~\eqref{eq:inject},~\eqref{eq:sampler}}
+  \COMMENT{Eqs.~\mainEqInject{},~\mainEqSampler{}}
 \IF{$r = R$}
 \STATE \textbf{break}
   \COMMENT{final inpaint; no further update}
 \ENDIF
 \STATE $\mathbf{d}^{(r)} \gets \bigl|\mathbf{x}_0-\hat{\mathbf{x}}^{(r)}\bigr|$
-  \COMMENT{Eq.~\eqref{eq:residual}}
+  \COMMENT{Eq.~\mainEqResidual{}}
 \STATE $\mathbf{b}^{(r)} \gets \mathrm{Dilate}\!\bigl(\mathbf{h}^{(r)};\,\rho\bigr)$
 \STATE $\mathbf{h}' \gets \mathbb{1}\!\bigl[\mathbf{d}^{(r)}>\tau\bigr]
   \odot \mathbf{b}^{(r)}$
-  \COMMENT{Eq.~\eqref{eq:update}}
+  \COMMENT{Eq.~\mainEqUpdate{}}
 \IF{$\|\mathbf{h}'\|_0 \ge \eta$}
 \STATE $\mathbf{h}^{(r+1)} \gets \mathbf{h}'$
 \ELSE
@@ -164,9 +170,9 @@ Figures~S4--S5 (MAISI~/~NSCLC qualitative).
   \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp.pdf}
   \caption{Healthy false-positive probe: random boxes in nodule-free
   lung (yellow~=~prompt contour, green~=~predicted mask fill; GT empty).
-  Columns match Figure~\ref{fig:qual-lidc} in the main paper.
+  Columns match \mainFigQualLIDC{} in the main paper.
   Object-centric baselines often fill the box; Ours
-  (\(60\)-step, \(R{=}3\); Table~\ref{tab:healthy_fp} in the main paper)
+  (\(60\)-step, \(R{=}3\); \mainTabHealthyFP{} in the main paper)
   is more conservative.}
   \label{fig:qual-fp}
 \end{figure*}
@@ -176,7 +182,7 @@ Figures~S4--S5 (MAISI~/~NSCLC qualitative).
   \includegraphics[width=\textwidth]{figures/fig_benchmark_dice_3datasets.pdf}
   \caption{Mean Dice under matched box prompts on LIDC, MAISI, and
   NSCLC (grouped by method). Hatched bars highlight Ours.
-  Aggregate numbers match Table~\ref{tab:cross} in the main paper.}
+  Aggregate numbers match \mainTabCross{} in the main paper.}
   \label{fig:bench}
 \end{figure*}
 
@@ -197,7 +203,7 @@ Figures~S4--S5 (MAISI~/~NSCLC qualitative).
   Top: MAISI synthetic nodules (Ours \(60\)-step, \(R{=}3\)).
   Bottom: NSCLC-Radiomics \(64^3\) tumor patches (Ours \(60\)-step, \(R{=}1\);
   cases LUNG1-024 / 145 / 098 / 173).
-  Illustrative examples under matched boxes; see Table~\ref{tab:cross}
+  Illustrative examples under matched boxes; see \mainTabCross{}
   in the main paper for aggregate Dice.}
   \label{fig:qual-cross}
 \end{figure*}
@@ -272,7 +278,7 @@ Configuration & Dice \(\uparrow\) & IoU \(\uparrow\) \\
 \label{sec:supp:healthy-fp-cross}
 % ----------------------------------------------------------------------
 We repeat the LIDC healthy false-positive protocol
-(Table~\ref{tab:healthy_fp} in the main paper) on nodule-free MAISI
+(\mainTabHealthyFP{} in the main paper) on nodule-free MAISI
 and NSCLC patches: random lung boxes (same size prior and seed),
 empty GT, and mean predicted mask volume (mm\(^3\)).
 Table~\ref{tab:healthy-fp-cross} reports aggregate volumes;
@@ -281,12 +287,12 @@ show the volume bars and true-nodule Dice vs.\ FP-volume trade-offs;
 Figures~\ref{fig:qual-fp-maisi}--\ref{fig:qual-fp-nsclc} give
 qualitative overlays (yellow~=~prompt box, lime~=~prediction).
 Ours uses the same dataset-specific RF settings as
-Table~\ref{tab:cross} in the main paper
+\mainTabCross{} in the main paper
 (MAISI: \(60\)-step, \(R{=}3\); NSCLC: \(60\)-step, \(R{=}1\)).
 Across both sets, Ours remains the lowest-\emph{non-silent} volume among
 methods that stay competitive on true nodules; VISTA3D is silent
 (\(0\,\mathrm{mm}^3\)) but weak on positive Dice
-(Table~\ref{tab:cross} in the main paper). SAM-Med3D returns an empty
+(\mainTabCross{} in the main paper). SAM-Med3D returns an empty
 mask on \(\sim\)1\% of prompts (same rate as LIDC); those rows are
 present with zero volume rather than missing.
 
@@ -317,7 +323,7 @@ nnInteractive
 \bottomrule
 \end{tabular}\\[0.25em]
 {\footnotesize $^\dagger$Near-silent on healthy prompts (cf.\
-Table~\ref{tab:cross} in the main paper for true-nodule Dice).
+\mainTabCross{} in the main paper for true-nodule Dice).
 Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
 \end{table*}
 
@@ -328,7 +334,7 @@ Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
   (a)~mean predicted volume under random empty-GT boxes;
   (b)~MAISI true-nodule Dice vs.\ healthy FP volume.
   Silent models (e.g., VISTA3D) sit at zero volume but low positive Dice
-  (Table~\ref{tab:cross} in the main paper).}
+  (\mainTabCross{} in the main paper).}
   \label{fig:fp-tradeoff-maisi}
 \end{figure*}
 
