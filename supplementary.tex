@@ -201,8 +201,7 @@ Figures~S4--S5 (MAISI~/~NSCLC qualitative).
   \caption{Cross-dataset qualitative overlays (red~=~GT, lime~=~prediction).
   Columns: GT, SAM-Med2D, nnInteractive, SAM-Med3D, SegVol, VISTA3D, Ours.
   Top: MAISI synthetic nodules (Ours \(60\)-step, \(R{=}3\)).
-  Bottom: NSCLC-Radiomics \(64^3\) tumor patches (Ours \(60\)-step, \(R{=}1\);
-  cases LUNG1-024 / 145 / 098 / 173).
+  Bottom: NSCLC-Radiomics \(64^3\) tumor patches (Ours \(60\)-step, \(R{=}1\)).
   Illustrative examples under matched boxes; see \mainTabCross{}
   in the main paper for aggregate Dice.}
   \label{fig:qual-cross}
@@ -233,7 +232,7 @@ on the LIDC positive set (same checkpoint). Moderate compute
 \(80\)-step/\(R{=}2\) also does not beat it.
 Figure~\ref{fig:qual-ablation} shows the corresponding overlays: coarse
 \(30\)-step residuals clean up by \(40\)-step/\(R{=}2\), after which
-contours stay visually stable---consistent with the flat Dice curve.
+contours stay visually stable, consistent with the flat Dice curve.
 
 \begin{table}[t]
 \centering
@@ -334,7 +333,7 @@ Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
   (a)~mean predicted volume under random empty-GT boxes;
   (b)~MAISI true-nodule Dice vs.\ healthy FP volume.
   Silent models (e.g., VISTA3D) sit at zero volume but low positive Dice
-  (\mainTabCross{} in the main paper).}
+  (\mainTabCross{} in the main paper). Top left is the ideal case.}
   \label{fig:fp-tradeoff-maisi}
 \end{figure*}
 
@@ -343,7 +342,7 @@ Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
   \includegraphics[width=\textwidth]{figures/fig_healthy_fp_tradeoff_nsclc.pdf}
   \caption{Healthy FP probe on NSCLC under the same protocol as
   Figure~\ref{fig:fp-tradeoff-maisi}
-  (Ours \(60\)-step, \(R{=}1\); Table~\ref{tab:healthy-fp-cross}).}
+  (Ours \(60\)-step, \(R{=}1\); Table~\ref{tab:healthy-fp-cross}).Top left is the ideal case.}
   \label{fig:fp-tradeoff-nsclc}
 \end{figure*}
 
