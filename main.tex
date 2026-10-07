@@ -38,6 +38,8 @@
 \newcommand{\suppTabAblation}{Table~S2}
 \newcommand{\suppFigAblation}{Figure~S6}
 \newcommand{\suppFigQualAblation}{Figure~S7}
+\newcommand{\suppFigQualLIDC}{Figure~S12}
+\newcommand{\suppFigFPTradeoff}{Figure~S13}
 \newcommand{\suppAlgRefine}{Algorithm~S1}
 \newcommand{\suppTabUnprompted}{Table~S4}
 
@@ -730,8 +732,8 @@ further reduces FP volume.
 VISTA3D~\citep{vista3d2024} is nearly silent on healthy tissue, but its
 LIDC Dice (\(0.19\)) shows that silence alone is not useful without
 sensitivity to real nodules.
-Figure~\ref{fig:fp-tradeoff} places every method in the true-nodule Dice
-vs.\ healthy FP volume plane.
+\suppFigFPTradeoff{} in the Supplementary Material places every method
+in the true-nodule Dice vs.\ healthy FP volume plane.
 
 \begin{table*}[t]
 \centering
@@ -772,29 +774,11 @@ On true nodules, healthy-counterfactual inpainting matches strong
 the native-3D promptable models under the same boxes, while remaining
 more conservative on healthy random boxes
 (Table~\ref{tab:main}).
-Figure~\ref{fig:qual-lidc} shows matched box-prompt predictions on
-selected LIDC cases with high Ours--GT agreement; under the same
-prompts, SAM-Med2D can under-segment, nnInteractive can inflate toward
-the box, and SegVol / VISTA3D can leave incomplete masks.
-
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig_qual_lidc.pdf}
-  \caption{Qualitative LIDC overlays under matched box prompts
-  (red~=~GT, lime~=~prediction). Columns: GT, SAM-Med2D, nnInteractive,
-  SAM-Med3D, SegVol, VISTA3D, and Ours. Ours uses \(40\) steps and
-  \(R{=}2\). Cases shown are high-agreement examples under the same prompts.}
-  \label{fig:qual-lidc}
-\end{figure*}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig_healthy_fp_tradeoff.pdf}
-  \caption{Healthy FP probe trade-off: (a)~mean predicted volume;
-  (b)~LIDC true-nodule Dice vs.\ healthy FP volume. Silent models
-  (e.g., VISTA3D) sit at zero volume but low positive Dice.}
-  \label{fig:fp-tradeoff}
-\end{figure}
+\suppFigQualLIDC{} in the Supplementary Material shows matched
+box-prompt predictions on selected LIDC cases with high Ours--GT
+agreement; under the same prompts, SAM-Med2D can under-segment,
+nnInteractive can inflate toward the box, and SegVol / VISTA3D can
+leave incomplete masks.
 
 %\paragraph{Takeaway.}
 Interactive segmenters optimize objectness inside the box and often
@@ -855,7 +839,7 @@ on the LIDC positive set (same checkpoint). Moderate compute
 
 \subsection{Discussion}
 Across Table~\ref{tab:main} and
-Figure~\ref{fig:fp-tradeoff}, the operating point we
+\suppFigFPTradeoff{}, the operating point we
 report on LIDC (\(40\)-step, \(R{=}2\)) is nearly tied with SAM-Med2D on
 true-nodule Dice (Table~\ref{tab:main}) while predicting less spurious mask
 volume on the healthy random-box probe
@@ -868,7 +852,7 @@ boxes, without ranking first on every column. The ablation
 (\suppTabAblation{}, \suppFigAblation{}, \suppFigQualAblation{})
 indicates that additional sampling steps beyond this point yield little
 further Dice gain on LIDC. Qualitative overlays
-(Figure~\ref{fig:qual-lidc}; \suppFigQualFP{}, \suppFigQualCross{}, and
+(\suppFigQualLIDC{}; \suppFigQualFP{}, \suppFigQualCross{}, and
 \suppFigQualNSCLC{}) illustrate the same pattern under matched
 prompts: competitive recovery on positive cases, sparser predictions on
 healthy prompts relative to several object-centric baselines, and transfer

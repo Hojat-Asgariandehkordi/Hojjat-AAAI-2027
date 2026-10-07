@@ -31,7 +31,6 @@
 \newcommand{\mainEqUpdate}{(10)}
 \newcommand{\mainTabHealthyFP}{Table~1}
 \newcommand{\mainTabCross}{Table~2}
-\newcommand{\mainFigQualLIDC}{Figure~2}
 
 % Supplementary numbering (matches macros in main.tex)
 \renewcommand{\thefigure}{S\arabic{figure}}
@@ -65,6 +64,8 @@ We also include an additional cross-dataset healthy false-positive
 probe (Table~S3, Figures~S8--S11) not cited from the main text,
 and a box-restricted comparison with IterMask2 and IterMask3D
 (Table~S4).
+Figures~S12--S13 are the LIDC qualitative overlays and the healthy
+false-positive trade-off moved from the main paper.
 
 % ----------------------------------------------------------------------
 \section{Default Hyperparameters}
@@ -160,7 +161,7 @@ Figures~S4--S5 (MAISI~/~NSCLC qualitative).
   \includegraphics[width=\textwidth]{figures/fig_qual_healthy_fp.pdf}
   \caption{Healthy false-positive probe: random boxes in nodule-free
   lung (yellow~=~prompt contour, green~=~predicted mask fill; GT empty).
-  Columns match \mainFigQualLIDC{} in the main paper.
+  Columns match Figure~\ref{fig:qual-lidc}.
   Object-centric baselines often fill the box; Ours
   (\(60\)-step, \(R{=}3\); \mainTabHealthyFP{} in the main paper)
   is more conservative.}
@@ -420,5 +421,32 @@ placed in Table~\ref{tab:unprompted}.
     \bottomrule
   \end{tabular}
 \end{table}
+
+% ----------------------------------------------------------------------
+\section{LIDC Overlays and Healthy False-Positive Trade-off}
+\label{sec:supp:lidc-figs}
+% ----------------------------------------------------------------------
+Figure~\ref{fig:qual-lidc} and Figure~\ref{fig:fp-tradeoff} are the
+LIDC qualitative overlays and the healthy false-positive trade-off
+referenced from the main paper (Figures~S12--S13).
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_qual_lidc.pdf}
+  \caption{Qualitative LIDC overlays under matched box prompts
+  (red~=~GT, lime~=~prediction). Columns: GT, SAM-Med2D, nnInteractive,
+  SAM-Med3D, SegVol, VISTA3D, and Ours. Ours uses \(40\) steps and
+  \(R{=}2\). Cases shown are high-agreement examples under the same prompts.}
+  \label{fig:qual-lidc}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_healthy_fp_tradeoff.pdf}
+  \caption{Healthy FP probe trade-off: (a)~mean predicted volume;
+  (b)~LIDC true-nodule Dice vs.\ healthy FP volume. Silent models
+  (e.g., VISTA3D) sit at zero volume but low positive Dice.}
+  \label{fig:fp-tradeoff}
+\end{figure}
 
 \end{document}
