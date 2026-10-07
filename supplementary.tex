@@ -1,26 +1,18 @@
-% ============================================================
-%  AAAI 2027 Anonymous Submission — Supplementary Material
-%  "Weakly-Supervised 3D Anomaly Segmentation via
-%   Region-Prompted Rectified-Flow Inpainting"
-% ============================================================
-\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
-\usepackage[submission]{aaai2027}    % DO NOT CHANGE THIS
-\usepackage[hyphens]{url}            % DO NOT CHANGE THIS
-\usepackage{graphicx}                % DO NOT CHANGE THIS
-\urlstyle{rm}                        % DO NOT CHANGE THIS
-\def\UrlFont{\rm}                    % DO NOT CHANGE THIS
-\usepackage{natbib}                  % DO NOT CHANGE THIS
-\usepackage{caption}                 % DO NOT CHANGE THIS
-\frenchspacing                       % DO NOT CHANGE THIS
+\documentclass[twoside]{article}
 
-% Recommended (algorithms)
+\usepackage{aistats2027}
+% Camera-ready: \usepackage[accepted]{aistats2027}
+
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\usepackage[round]{natbib}
+\renewcommand{\bibname}{References}
+\renewcommand{\bibsection}{\subsubsection*{\bibname}}
+\bibliographystyle{plainnat}
+
 \usepackage{algorithm}
 \usepackage{algorithmic}
-
-% Recommended (tables)
 \usepackage{booktabs}
-
-% Additional math / formatting (permitted)
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{mathtools}
@@ -47,23 +39,19 @@
 \renewcommand{\thealgorithm}{S\arabic{algorithm}}
 \renewcommand{\thesection}{S\arabic{section}}
 
-\pdfinfo{/TemplateVersion (2027.1)}
-
 \setcounter{secnumdepth}{1}
 
-\title{Region Prompted Unsupervised Lung Anomaly Segmentation via\\
-       Rectified-Flow Inpainting\\[0.4em]
-       \large Supplementary Material}
-
-\author{
-    Anonymous Submission
-}
-\affiliations{
-    Anonymous Institution
-}
-
 \begin{document}
-\maketitle
+
+\twocolumn[
+
+\aistatstitle{Region Prompted Unsupervised Lung Anomaly Segmentation via\\
+Rectified-Flow Inpainting\\
+Supplementary Material}
+
+\aistatsauthor{Anonymous Author}
+
+\aistatsaddress{Anonymous Institution} ]
 
 This supplementary document provides the material referenced from the
 main text, in the same order as the S-number macros there:
