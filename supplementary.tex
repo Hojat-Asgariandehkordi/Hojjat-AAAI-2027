@@ -74,7 +74,9 @@ Figures~S2--S3 (cross-dataset Dice bars),
 Figures~S4--S5 (MAISI~/~NSCLC true-nodule qualitative),
 Table~S2 and Figures~S6--S7 (ablation).
 We also include an additional cross-dataset healthy false-positive
-probe (Table~S3, Figures~S8--S11) not cited from the main text.
+probe (Table~S3, Figures~S8--S11) not cited from the main text,
+and a box-restricted comparison with IterMask2 and IterMask3D
+(Table~S4).
 
 % ----------------------------------------------------------------------
 \section{Default Hyperparameters}
@@ -365,5 +367,70 @@ Ours: MAISI \(60\)-step/\(R{=}3\); NSCLC \(60\)-step/\(R{=}1\).}
   Figure~\ref{fig:qual-fp-maisi}; see Table~\ref{tab:healthy-fp-cross}.}
   \label{fig:qual-fp-nsclc}
 \end{figure*}
+
+% ----------------------------------------------------------------------
+\section{Non-Promptable Reconstruction Methods}
+\label{sec:supp:unprompted}
+
+PHANES (Bercea et al., 2023), REFLECT (Beizaee et al., 2025), and
+IterMask3D (Liang et al., 2025), together with the earlier IterMask2
+(Liang et al., 2024), localize anomalies by searching an image or volume
+for tissue that a healthy reconstruction cannot explain.
+None of them takes an external box or point.
+The main-paper tables therefore compare only promptable segmenters that
+consume the same boxes as our method.
+PHANES and REFLECT are not scored here: entering them would require
+replacing that search procedure with a box interface those papers do not
+evaluate.
+
+IterMask2 and IterMask3D can be confined to a supplied box, so
+Table~\ref{tab:unprompted} reports that adapted comparison.
+Both models were trained on the same nodule-free LIDC \(64^{3}\) patches
+as our healthy prior.
+At test time the prediction is restricted to the per-slice nodule box
+(one-voxel padding) and thresholded at absolute residual \(0.05\).
+IterMask3D uses the epoch-499 checkpoint.
+IterMask2 uses the 120{,}000-step checkpoint of a 150{,}000-step run.
+This is not the published IterMask protocol, which discovers the mask
+without an external box.
+Ours is the published matched-box result (LIDC: 40 steps, \(R{=}2\);
+MAISI: 60 steps, \(R{=}3\); healthy probe: 3{,}840 random boxes).
+On MAISI the same runs give IoU \(0.49\) for IterMask3D and \(0.58\) for
+IterMask2; the published MAISI table reports Dice only, so
+Table~\ref{tab:unprompted} does not add an Ours IoU there.
+
+On the 680 NSCLC test patches from the 85 held-out patients, the same
+box restriction gives Dice / IoU of \(0.67 / 0.51\) for IterMask3D and
+\(0.78 / 0.65\) for IterMask2.
+The main-paper NSCLC entry is a stitched-volume score, so it is not
+placed in Table~\ref{tab:unprompted}.
+
+\begin{table}[t]
+  \centering
+  \caption{Box-restricted comparison with IterMask2 and IterMask3D.
+  LIDC uses 1{,}658 patches and MAISI 109 patches.
+  Healthy volume is the mean predicted volume (mm\(^{3}\)) on 3{,}840
+  random boxes in nodule-free lung.
+  Ours is the published promptable result.
+  IterMask predictions are confined to the box; PHANES and REFLECT are
+  omitted because they are not promptable.}
+  \label{tab:unprompted}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lcccc}
+    \toprule
+    Method &
+    \multicolumn{2}{c}{LIDC} &
+    MAISI &
+    Healthy \\
+    \cmidrule(lr){2-3}
+    & Dice & IoU & Dice & mm\(^{3}\) \\
+    \midrule
+    Ours & 0.73 & 0.59 & 0.71 & 1076 \\
+    IterMask3D & 0.65 & 0.50 & 0.61 & 671 \\
+    IterMask2 & 0.36 & 0.27 & 0.68 & 609 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \end{document}

@@ -39,6 +39,7 @@
 \newcommand{\suppFigAblation}{Figure~S6}
 \newcommand{\suppFigQualAblation}{Figure~S7}
 \newcommand{\suppAlgRefine}{Algorithm~S1}
+\newcommand{\suppTabUnprompted}{Table~S4}
 
 \begin{document}
 
@@ -53,7 +54,7 @@ Rectified-Flow Inpainting}
 
 % =============================================================
 \begin{abstract}
-In lung CT CAD, a candidate region is often already available from a detector, a radiologist, or a coarse clinical cue such as a slice-wise bounding box, and the remaining task is to decide whether that region contains abnormal tissue and, if so, where. Interactive foundation models address this setting with box or point prompts, but they segment ``the object in the box'' by boundary contrast and have no explicit model of healthy parenchyma; they can therefore emit confident masks even on entirely normal lung. We reframe the problem as \emph{region-prompted anomaly verification}. A 3D rectified-flow model is trained only on nodule-free patches to learn a generative prior of healthy tissue. At inference, the same weak boxes used by interactive segmenters define an inpainting hole; RePaint-style known-region injection synthesizes a healthy counterfactual, and the residual against the observation localizes the anomaly. Iterative residual refinement sharpens the mask without using lesion masks during training. Under matched box prompts on LIDC-IDRI, our method matches the strongest interactive baseline on true-nodule Dice (\(0.73\)) while producing substantially less spurious mask volume on a healthy false-positive probe (random boxes in nodule-free lung: \(1076\,\mathrm{mm}^3\) vs.\ \(1980\) for SAM-Med2D and \(4015\) for nnInteractive under the reported our best configuration). The same competitive tier holds on MAISI and NSCLC under the same protocol. These results support generative healthy inpainting as a complementary alternative to interactive object segmentation when a low false-positive rate is critical.
+In lung CT CAD, a candidate region is often already available from a detector, a radiologist, or a coarse clinical cue such as a slice-wise bounding box, and the remaining task is to decide whether that region contains abnormal tissue and, if so, where. Interactive foundation models address this setting with box or point prompts, but they segment ``the object in the box'' by boundary contrast and have no explicit model of healthy parenchyma; they can therefore emit confident masks even on entirely normal lung. We reframe the problem as \emph{region-prompted anomaly verification}. Prior healthy-reconstruction detectors (PHANES, REFLECT, and IterMask) are not promptable, so they are not the baselines in this comparison. A 3D rectified-flow model is trained only on nodule-free patches to learn a generative prior of healthy tissue. At inference, the same weak boxes used by interactive segmenters define an inpainting hole; RePaint-style known-region injection synthesizes a healthy counterfactual, and the residual against the observation localizes the anomaly. Iterative residual refinement sharpens the mask without using lesion masks during training. Under matched box prompts on LIDC-IDRI, our method matches the strongest interactive baseline on true-nodule Dice (\(0.73\)) while producing substantially less spurious mask volume on a healthy false-positive probe (random boxes in nodule-free lung: \(1076\,\mathrm{mm}^3\) vs.\ \(1980\) for SAM-Med2D and \(4015\) for nnInteractive under the reported our best configuration). The same competitive tier holds on MAISI and NSCLC under the same protocol. These results support generative healthy inpainting as a complementary alternative to interactive object segmentation when a low false-positive rate is critical.
 \end{abstract}
 
 % =============================================================
@@ -79,6 +80,26 @@ normal, a failure mode that is especially damaging for screening and
 triage, where false positives drive unnecessary follow-up. The issue is
 acute for small or low-contrast findings, where intensity boundaries are
 weak, but it also appears whenever a box is placed on healthy tissue.
+
+Related generative detectors already replace suspected tissue with a
+pseudo-healthy reconstruction and read the residual as the anomaly, but
+they are not promptable.
+PHANES~\citep{phanes2023} inpaints a latent mask with a pseudo-healthy
+generator.
+REFLECT~\citep{reflect2025} uses rectified flow to transport abnormal
+brain images toward a healthy appearance.
+IterMask2~\citep{itermask2024} and IterMask3D~\citep{itermask3d2025}
+iteratively shrink a reconstruction-error mask, in 2D and in 3D.
+Each method searches the image or volume for deviations from normality.
+None accepts an external box or point that marks the region to be
+verified, so they do not answer the same question as a box-prompted
+second stage.
+The main comparison is therefore restricted to interactive segmenters
+that consume the same boxes.
+A side experiment that confines IterMask2 and IterMask3D to those boxes
+is reported in \suppTabUnprompted{}; PHANES and REFLECT are not entered
+in that table, because doing so would replace the search procedure those
+papers evaluate.
 
 We therefore reframe the task as \emph{region-prompted anomaly
 verification} rather than generic interactive segmentation. We learn a
@@ -113,6 +134,9 @@ object lies inside the box, it is more conservative on normal parenchyma.
     \emph{healthy false-positive} probe, random boxes in nodule-free
     lung, where object-centric segmenters often still fire while the
     healthy-prior model remains more conservative.
+    Non-promptable reconstruction methods (PHANES, REFLECT, IterMask2/3D)
+    are not primary baselines, because they do not take a box;
+    the box-restricted IterMask comparison is in \suppTabUnprompted{}.
 \end{itemize}
 
 \section{Related Work}
@@ -151,22 +175,36 @@ and iteratively refine that hole from the residual, without lesion
 masks at training time.
 
 \paragraph{Generative medical anomaly detection.}
-Unsupervised AD learns normality and scores deviations, from
-f-AnoGAN~\citep{fanogan2019} to diffusion reconstruction.
+Unsupervised anomaly detection learns normality and scores deviations,
+from f-AnoGAN~\citep{fanogan2019} to diffusion reconstruction.
 AnoDDPM~\citep{anoddpm2022} introduced partial diffusion with simplex
 noise; AutoDDPM~\citep{autoddpm2023} automates masking, stitching, and
 re-sampling for pseudo-healthy synthesis.
+PHANES~\citep{phanes2023} replaces suspected lesions with a
+pseudo-healthy reconstruction and localizes the residual.
+REFLECT~\citep{reflect2025} applies rectified flow as a correction
+transport from abnormal brain MRI toward healthy tissue.
+IterMask2~\citep{itermask2024} and IterMask3D~\citep{itermask3d2025}
+iteratively shrink a mask by retaining voxels whose reconstruction error
+stays large, in 2D MRI slices and in 3D brain volumes.
 Related lines include latent-space diffusion
 OOD~\citep{latent_ad2023}, counterfactual brain anomaly
-maps~\citep{fontanella2023}, IterMask2~\citep{itermask2024},
+maps~\citep{fontanella2023},
 Synomaly multi-stage diffusion~\citep{synomaly2024}, and
 frequency-decomposition pipelines~\citep{fdp2026}.
-Much of this literature targets brain MRI or other 2D/stacked settings,
-discovers corruption regions automatically, and does not consume the
-\emph{same interactive box prompts} used by foundation segmenters.
-We bring healthy-prior residualization into 3D lung CT CAD, where the
-candidate region is already given and false positives on normal boxes
-are clinically costly.
+These methods estimate \emph{where} an anomaly is.
+They do not take a candidate box as an input.
+Scoring them in the main tables would either withhold the box, which
+answers a different question, or force a prompt into a model that was
+not designed to receive one.
+The matched-box comparison is therefore limited to promptable
+segmenters.
+\suppTabUnprompted{} reports the only adapted numbers we compute, for
+IterMask2 and IterMask3D confined to the same boxes; PHANES and REFLECT
+are discussed here and left out of that table.
+Our setting is the complementary one in 3D lung CT CAD: the candidate
+region is already given, and false positives on normal boxes are
+clinically costly.
 
 \paragraph{Diffusion~/~flow inpainting and adaptive masks.}
 RePaint~\citep{lugmayr2022repaint} established mask-guided resampling
@@ -589,6 +627,11 @@ refinement then specializes the region without requiring paired nodule-dense
 training of a segmenter.
 This makes the approach complementary to promptable models and attractive when
 healthy tissue is abundant but curated lesion masks are scarce.
+PHANES~\citep{phanes2023}, REFLECT~\citep{reflect2025}, and
+IterMask2/3D~\citep{itermask2024,itermask3d2025} also compare tissue with
+a healthy reconstruction, but they discover the region rather than
+receiving it as a prompt, which is why they are not the baselines in
+Section~\ref{sec:experiments}.
 
 %------------------------------------------------------------------------------
 \subsection{Implementation Details}
@@ -621,6 +664,9 @@ region is healthy, how often do models still produce a spurious
 mask? We answer (i)--(ii) on LIDC first, then test whether the
 same trends hold on MAISI and NSCLC, and finally ablate inference
 compute for Ours.
+PHANES, REFLECT, and IterMask3D are omitted from these tables because
+they are not promptable (Section~\ref{sec:related}); the box-restricted
+IterMask comparison is in \suppTabUnprompted{}.
 
 \subsection{Datasets and Protocol}
 \paragraph{Positive LIDC hold-out.}
@@ -659,6 +705,9 @@ SAM-Med3D~\citep{sam_med3d2023},
 SegVol~\citep{segvol2024},
 VISTA3D~\citep{vista3d2024}, and
 nnInteractive~\citep{nninteractive2025}.
+PHANES, REFLECT, and IterMask3D are excluded because they search the
+scan for an anomaly and do not accept a box; the adapted IterMask
+numbers are in \suppTabUnprompted{}.
 For Ours we report a rectified-flow checkpoint with iterative residual
 refinement. Unless stated otherwise, the default LIDC configuration is
 \(40\) inference steps and \(R{=}2\) refine rounds; healthy-FP and
